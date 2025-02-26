@@ -1,0 +1,6 @@
+FROM mongo:latest
+
+COPY startStore /docker-entrypoint-initdb.d/startStore
+COPY init-mongo.sh /docker-entrypoint-initdb.d/init-mongo.sh
+
+RUN chmod +x /docker-entrypoint-initdb.d/init-mongo.sh
