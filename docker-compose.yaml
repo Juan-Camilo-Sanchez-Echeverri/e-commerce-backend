@@ -1,0 +1,38 @@
+services:
+  backend:
+    depends_on:
+      - db
+    build:
+      context: .
+      dockerfile: DockerFile
+    container_name: backend
+    restart: always
+    ports:
+      - '${PORT}:${PORT}'
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - TZ=America/Bogota
+    networks:
+      - app-network
+
+  db:
+    build:
+      context: .
+      dockerfile: DockerFile.mongo
+    container_name: mongo
+    restart: always
+    ports:
+      - 27018:27017
+    environment:
+      MONGODB_DATABASE: store
+    volumes:
+      - ./mongo:/data/db
+    networks:
+      - app-network
+
+
+networks:
+  app-network:
+    driver: bridge
