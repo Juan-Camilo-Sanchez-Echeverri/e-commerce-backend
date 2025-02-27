@@ -96,6 +96,7 @@ export class AuthService {
       email,
       type: 'activeAccount',
       expiresIn,
+      password: user.password ? false : true,
     });
 
     return { send: true };

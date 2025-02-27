@@ -22,6 +22,12 @@ import { NotificationsService } from '../notifications/notifications.service';
 
 const MAX_ATTEMPTS = 3;
 
+interface DataEmailActive {
+  email: string;
+  token: string;
+  password: boolean;
+}
+
 @Injectable()
 export class EmailRequestService {
   constructor(
@@ -31,7 +37,7 @@ export class EmailRequestService {
   ) {}
 
   async create(data: EmailRequestDto) {
-    const { email, type, expiresIn } = data;
+    const { email, type, expiresIn, password = true } = data;
 
     const token = this.generateToken();
 
@@ -44,7 +50,9 @@ export class EmailRequestService {
       $inc: { [`${type}.attempts`]: 1 },
     };
 
-    if (type === 'activeAccount') await this.sendEmailActive(email, token);
+    if (type === 'activeAccount') {
+      await this.sendEmailActive({ email, token, password });
+    }
 
     await this.emailRequestModel.findOneAndUpdate({ email }, update, {
       new: true,
@@ -52,11 +60,11 @@ export class EmailRequestService {
     });
   }
 
-  private async sendEmailActive(email: string, token: string) {
+  private async sendEmailActive(data: DataEmailActive) {
     const dataEmail = {
-      to: email,
+      to: data.email,
       subject: 'Bienvenido a la tienda',
-      htmlContent: activeAccount(email, token),
+      htmlContent: activeAccount(data),
     };
 
     await this.notificationService.sendEmail(dataEmail);

@@ -2,7 +2,13 @@ import { styles } from './sections/styles';
 
 const URL = 'https://juancamilosanchez.tech/activate-account';
 
-export const activeAccount = (email: string, token: string) => {
+interface Data {
+  email: string;
+  token: string;
+  password: boolean;
+}
+export const activeAccount = (data: Data) => {
+  const { email, token, password } = data;
   return `
     <!DOCTYPE html>
     <html lang="es">
@@ -21,7 +27,7 @@ export const activeAccount = (email: string, token: string) => {
         <p>Hola,</p>
         <p>Gracias por unirte a nosotros. Para activar tu cuenta, por favor haz clic en el siguiente enlace:</p>
         <p>
-          <a class="activate-button" href="${URL}?email=${email}&token=${token}">
+          <a class="activate-button" href="${URL}?email=${email}&token=${token}&password=${password}">
             Activar cuenta
           </a>
         </p>

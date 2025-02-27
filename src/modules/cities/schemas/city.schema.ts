@@ -1,4 +1,3 @@
-import { BadRequestException } from '@nestjs/common';
 import { Schema, Prop, SchemaFactory } from '@nestjs/mongoose';
 import mongoose, { HydratedDocument } from 'mongoose';
 import { validateMongo } from '../../../common/helpers';
