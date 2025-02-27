@@ -38,4 +38,6 @@ async function bootstrap(): Promise<void> {
   logger.log(`Server running on http://localhost:${envs.port}`);
 }
 
-bootstrap();
+bootstrap().catch((error) => {
+  console.error('Error server:', error);
+});
