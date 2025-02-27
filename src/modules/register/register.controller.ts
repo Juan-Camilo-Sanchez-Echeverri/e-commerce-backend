@@ -23,6 +23,7 @@ export class RegisterController {
       email,
       type: 'activeAccount',
       expiresIn,
+      password: registerDto.password ? false : true,
     });
 
     return storeCustomer;
