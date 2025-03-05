@@ -34,7 +34,6 @@ import { PaymentsModule } from '@modules/payments/payments.module';
 import { CategoriesModule } from '@modules/categories/categories.module';
 import { ProductsModule } from '@modules/products/products.module';
 import { RegisterModule } from '@modules/register/register.module';
-import { ReportsModule } from '@modules/reports/reports.module';
 
 import { SettingsEmailMarketingModule } from '@modules/settings-email-marketing/settings-email-marketing.module';
 
@@ -70,7 +69,6 @@ import { SubcategoriesModule } from './modules/subcategories/subcategories.modul
     CategoriesModule,
     ProductsModule,
     RegisterModule,
-    ReportsModule,
     SettingsEmailMarketingModule,
     StatesModule,
     StoreCustomerModule,
