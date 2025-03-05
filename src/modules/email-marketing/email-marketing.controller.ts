@@ -12,8 +12,6 @@ import { EmailMarketingService } from './email-marketing.service';
 import { CreateEmailMarketingDto, UpdateEmailMarketingDto } from './dto';
 import { Roles } from '../../common/decorators';
 
-import { Role } from '../../common/enums';
-
 import { EmailMarketingDocument } from './schemas/email-marketing.schema';
 
 @Controller('email-marketing')
@@ -21,13 +19,13 @@ export class EmailMarketingController {
   constructor(private readonly emailMarketingService: EmailMarketingService) {}
 
   @Get()
-  @Roles('Supervisor', 'Admin', 'Manager')
+  @Roles('Admin')
   async findAll() {
     return await this.emailMarketingService.findAll();
   }
 
   @Get(':id')
-  @Roles(Role.Supervisor, Role.Admin, Role.Manager)
+  @Roles('Supervisor', 'Admin')
   async findOne(
     @Param('id') id: string,
   ): Promise<EmailMarketingDocument | null> {
@@ -35,7 +33,7 @@ export class EmailMarketingController {
   }
 
   @Post('send')
-  @Roles(Role.Admin, Role.Manager)
+  @Roles('Admin')
   async create(
     @Body() createEmailMarketingDto: CreateEmailMarketingDto,
   ): Promise<EmailMarketingDocument> {
@@ -43,7 +41,7 @@ export class EmailMarketingController {
   }
 
   @Patch(':id')
-  @Roles(Role.Supervisor, Role.Admin, Role.Manager)
+  @Roles('Supervisor', 'Admin')
   async update(
     @Param('id') id: string,
     @Body() updateEmailMarketingDto: UpdateEmailMarketingDto,
@@ -52,7 +50,7 @@ export class EmailMarketingController {
   }
 
   @Delete(':id')
-  @Roles(Role.Supervisor, Role.Admin, Role.Manager)
+  @Roles('Supervisor', 'Admin')
   async remove(
     @Param('id') id: string,
   ): Promise<EmailMarketingDocument | null> {

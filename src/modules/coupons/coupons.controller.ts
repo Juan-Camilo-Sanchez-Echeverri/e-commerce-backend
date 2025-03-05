@@ -9,12 +9,10 @@ import {
   Query,
 } from '@nestjs/common';
 
-import { Roles } from '../../common/decorators';
-
-import { Role } from '../../common/enums';
+import { Roles } from '@common/decorators';
+import { FilterDto } from '@common/dto';
 
 import { CreateCouponDto, UpdateCouponDto } from './dto';
-import { FilterDto } from '../../common/dto';
 import { CouponDocument } from './schemas/coupon.schema';
 import { CouponsService } from './coupons.service';
 
@@ -23,19 +21,19 @@ export class CouponsController {
   constructor(private readonly couponsService: CouponsService) {}
 
   @Get()
-  @Roles(Role.Supervisor, Role.Admin, Role.Manager)
+  @Roles('Admin')
   async findAll(@Query() query: FilterDto<CouponDocument>) {
     return await this.couponsService.findPaginate(query);
   }
 
   @Get(':couponId')
-  @Roles(Role.Supervisor, Role.Admin, Role.Manager)
+  @Roles('Admin')
   async findOne(@Param('couponId') couponId: string): Promise<CouponDocument> {
     return await this.couponsService.findOneById(couponId);
   }
 
   @Post()
-  @Roles(Role.Supervisor, Role.Admin, Role.Manager)
+  @Roles('Admin')
   async create(
     @Body() createCouponDto: CreateCouponDto,
   ): Promise<CouponDocument> {
@@ -43,7 +41,7 @@ export class CouponsController {
   }
 
   @Patch(':couponId')
-  @Roles(Role.Supervisor, Role.Admin, Role.Manager)
+  @Roles('Admin')
   async update(
     @Param('couponId') couponId: string,
     @Body() updateCouponDto: UpdateCouponDto,
@@ -52,7 +50,7 @@ export class CouponsController {
   }
 
   @Delete(':couponId')
-  @Roles(Role.Supervisor, Role.Admin, Role.Manager)
+  @Roles('Admin')
   async remove(
     @Param('couponId') couponId: string,
   ): Promise<CouponDocument | null> {
