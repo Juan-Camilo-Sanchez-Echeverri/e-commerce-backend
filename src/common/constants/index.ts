@@ -5,6 +5,5 @@ export * from './file-extensions.constants';
 export * from './otp.constants';
 export * from './payments.constants';
 export * from './product-attributes.constants';
-export * from './products.constants';
 export * from './shopping-cart.constants';
 export * from './users.constants';

@@ -1,39 +1,35 @@
-import { IsArray, IsBoolean, IsNumber, IsOptional, Min } from 'class-validator';
+import {
+  IsMongoId,
+  IsArray,
+  IsOptional,
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+} from 'class-validator';
 
-import { IsNotBlank } from '../../../common/decorators/is-not-blank.decorator';
+import { IsNotBlank } from '@common/decorators';
+import { Status } from '@common/enums';
 
 export class CreateProductDto {
-  @IsNotBlank({ message: 'name is required' })
+  @IsNotBlank({ message: 'name should not be empty' })
   name: string;
 
-  @IsNotBlank({ message: 'description is required' })
+  @IsNotBlank({ message: 'description should not be empty' })
   description: string;
 
+  @IsOptional()
+  @IsEnum(Status)
+  status?: Status;
+
+  @IsNotEmpty()
   @IsNumber()
-  @Min(0.01)
   price: number;
 
-  @IsNumber()
-  @IsOptional()
-  stock?: number;
-
-  @IsNumber()
-  @IsOptional()
-  limitWarningStock?: number;
+  @IsArray()
+  @IsMongoId({ each: true })
+  categories: string[];
 
   @IsArray()
-  @IsOptional()
-  images?: string[] = [];
-
-  @IsArray()
-  @IsOptional()
-  categories?: string[] = [];
-
-  @IsArray()
-  @IsOptional()
-  attributes?: string[] = [];
-
-  @IsBoolean()
-  @IsOptional()
-  isActive?: boolean;
+  @IsMongoId({ each: true })
+  subcategories: string[];
 }
