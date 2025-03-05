@@ -23,20 +23,14 @@ import { Request } from 'express';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  // @Get()
-  // @Roles(Role.Supervisor)
-  // async findAll(@Query() queryPaginateDto: QueryPaginateDto) {
-  //   return this.usersService.findAll(queryPaginateDto);
-  // }
-
   @Get(':id')
-  @Roles(Role.Supervisor, Role.Admin, Role.Manager)
+  @Roles('Admin')
   async findAnyUser(@Param('id') id: string): Promise<UserDocument> {
     return await this.usersService.findOne(id);
   }
 
   @Post()
-  @Roles(Role.Supervisor, Role.Admin, Role.Manager)
+  @Roles('Admin')
   async createUser(
     @Body() createUserDto: CreateUserDto,
     @Query('role') role: Role,
@@ -48,7 +42,7 @@ export class UsersController {
   }
 
   @Patch('me')
-  @Roles(Role.Admin, Role.Manager, Role.Agent, Role.Supervisor)
+  @Roles('Admin')
   async updateMe(
     @Body() updateUserDto: UpdateUserDto,
     @Req() request: Request,
@@ -58,7 +52,7 @@ export class UsersController {
   }
 
   @Patch(':id')
-  @Roles(Role.Supervisor)
+  @Roles('Admin')
   async updateAnyUser(
     @Param('id') id: string,
     @Body() updateUserDto: UpdateUserDto,
@@ -67,7 +61,7 @@ export class UsersController {
   }
 
   @Delete(':id')
-  @Roles(Role.Supervisor)
+  @Roles('Admin')
   async deleteAnyUser(@Param('id') id: string) {
     return await this.usersService.removeUser(id);
   }

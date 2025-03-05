@@ -4,8 +4,6 @@ import { SettingsEmailMarketingService } from './settings-email-marketing.servic
 import { UpdateSettingsEmailMarketingDto } from './dto';
 import { Roles } from '../../common/decorators';
 
-import { Role } from '../../common/enums';
-
 import { SettingsEmailMarketingDocument } from './schema/settings-email-marketing.schema';
 
 @Controller('email-marketing/settings')
@@ -15,13 +13,13 @@ export class SettingsEmailMarketingController {
   ) {}
 
   @Get()
-  @Roles(Role.Supervisor)
+  @Roles()
   async findAll(): Promise<SettingsEmailMarketingDocument[]> {
     return await this.settingsEmailMarketingService.findAll();
   }
 
   @Get(':id')
-  @Roles(Role.Supervisor, Role.Admin, Role.Manager)
+  @Roles('Admin')
   async findOne(
     @Param('id') id: string,
   ): Promise<SettingsEmailMarketingDocument> {
@@ -29,7 +27,7 @@ export class SettingsEmailMarketingController {
   }
 
   @Patch()
-  @Roles(Role.Supervisor, Role.Admin, Role.Manager)
+  @Roles('Admin')
   async update(
     @Body()
     updateSettingsEmailMarketingDto: UpdateSettingsEmailMarketingDto,
@@ -40,7 +38,7 @@ export class SettingsEmailMarketingController {
   }
 
   @Delete(':id')
-  @Roles(Role.Supervisor, Role.Admin, Role.Manager)
+  @Roles('Admin')
   async remove(@Param('id') id: string) {
     return await this.settingsEmailMarketingService.remove(id);
   }

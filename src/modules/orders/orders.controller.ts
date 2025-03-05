@@ -1,7 +1,7 @@
 import { Controller, Get, Patch, Param, Delete, Query } from '@nestjs/common';
 
 import { Roles } from '@common/decorators';
-import { Role } from '@common/enums';
+
 import { FilterDto } from '@common/dto';
 
 import { QueryFilterDto, QueryUpdateDto } from './dto';
@@ -14,19 +14,19 @@ export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
   @Get()
-  @Roles(Role.Supervisor)
+  @Roles('Supervisor')
   async findAll(@Query() query: FilterDto<OrderDocument>) {
     return await this.ordersService.findPaginate(query);
   }
 
   @Get(':orderId')
-  @Roles(Role.Supervisor, Role.Admin, Role.Manager)
+  @Roles('Supervisor', 'Admin')
   async findOne(@Param('orderId') orderId: string): Promise<OrderDocument> {
     return await this.ordersService.findOneById(orderId);
   }
 
   @Get('customer/:customerId')
-  @Roles(Role.Supervisor, Role.Admin, Role.Manager, Role.Agent)
+  @Roles('Supervisor', 'Admin')
   async findOrdersByCustomer(
     @Param('customerId') customerId: string,
     @Query() queryFilterDto: QueryFilterDto,
@@ -38,7 +38,7 @@ export class OrdersController {
   }
 
   @Patch(':orderId')
-  @Roles(Role.Supervisor, Role.Admin, Role.Manager, Role.Agent)
+  @Roles('Supervisor', 'Admin')
   async update(
     @Param('orderId') orderId: string,
     @Query() { status }: QueryUpdateDto,
@@ -47,7 +47,7 @@ export class OrdersController {
   }
 
   @Delete(':orderId')
-  @Roles(Role.Supervisor, Role.Admin, Role.Manager)
+  @Roles('Supervisor', 'Admin')
   async remove(
     @Param('orderId') orderId: string,
   ): Promise<OrderDocument | null> {
