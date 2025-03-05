@@ -1,6 +1,5 @@
 interface GeneralReport {
   totalAdmins: number;
-  totalAgents: number;
   totalProducts: number;
 }
 

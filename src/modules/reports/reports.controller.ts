@@ -1,4 +1,4 @@
-import { Controller, Get, Param, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
 
 import { ReportsService } from './reports.service';
 
@@ -17,34 +17,34 @@ export class ReportsController {
     return this.reportsService.generalReport();
   }
 
-  @Roles(Role.Supervisor, Role.Admin, Role.Manager)
+  @Roles(Role.Supervisor, Role.Admin)
   @Get('salesYear')
   // : Promise<OrdersReport> {
   async getOrders() {
     return this.reportsService.getOrdersOrQuotationsReport();
   }
 
-  @Roles(Role.Supervisor, Role.Admin, Role.Manager)
+  @Roles(Role.Supervisor, Role.Admin)
   @Get('customers')
   async getCustomers() {
     // ): Promise<RegisteredUsersByMonth> {
     return await this.reportsService.getRegisteredUsersByMonth();
   }
 
-  @Roles(Role.Supervisor, Role.Admin, Role.Manager)
+  @Roles(Role.Supervisor, Role.Admin)
   @Get('products-categories')
   async getProductsCategories(): Promise<CategoryReport[]> {
     return await this.reportsService.getProductsByCategoryReport();
   }
 
-  @Roles(Role.Supervisor, Role.Admin, Role.Manager)
+  @Roles(Role.Supervisor, Role.Admin)
   @Get('most-items-day-of-week/')
   async getMostItemsDayOfWeek() {
     // ): Promise<DayOfWeek> {
     return await this.reportsService.getDayOfWeekWithMostItems();
   }
 
-  @Roles(Role.Supervisor, Role.Admin, Role.Manager)
+  @Roles(Role.Supervisor, Role.Admin)
   @Get('products')
   async getProducts(
     @Query() paginationDto: PaginationDto,
@@ -53,7 +53,7 @@ export class ReportsController {
     return await this.reportsService.getProductsReport(paginationDto);
   }
 
-  @Roles(Role.Supervisor, Role.Admin, Role.Manager)
+  @Roles(Role.Supervisor, Role.Admin)
   @Get('usersZone/')
   async getUsersZone(@Query() paginationDto: PaginationDto) {
     return await this.reportsService.getUsersZone(paginationDto);

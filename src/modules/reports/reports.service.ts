@@ -6,7 +6,7 @@ import { OrdersService } from '../orders/orders.service';
 
 import { PaginationDto } from '../../common/dto';
 import { StoreCustomerService } from '../customers/store-customer.service';
-import { ProductCategoriesService } from '../product-categories/product-categories.service';
+import { CategoriesService } from '../categories/categories.service';
 
 @Injectable()
 export class ReportsService {
@@ -16,19 +16,18 @@ export class ReportsService {
     private readonly ordersService: OrdersService,
 
     private readonly storeCustomerService: StoreCustomerService,
-    private readonly productCategoriesService: ProductCategoriesService,
+    private readonly productCategoriesService: CategoriesService,
   ) {}
 
   async generalReport(): Promise<GeneralReport> {
-    const [totalAdmins, totalAgents, totalProducts] = await Promise.all([
+    const [totalAdmins, totalProducts] = await Promise.all([
       this.usersService.findByQuery({ roles: Role.Admin }),
-      this.usersService.findByQuery({ roles: Role.Agent }),
+
       this.productsService.findAll(),
     ]);
 
     return {
       totalAdmins: totalAdmins.length,
-      totalAgents: totalAgents.length,
       totalProducts: totalProducts.length,
     };
   }
@@ -288,7 +287,7 @@ export class ReportsService {
       if (item.products && Array.isArray(item.products)) {
         for (const product of item.products) {
           const productId = product.product.toString();
-          const { name } = await this.productsService.findOne(productId);
+          const { name } = await this.productsService.findById(productId);
           const productName = name;
           productSalesCount[productName] =
             (productSalesCount[productName] || 0) + 1;

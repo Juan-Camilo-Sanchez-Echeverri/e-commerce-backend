@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ReportsService } from './reports.service';
 import { ReportsController } from './reports.controller';
-import { ProductCategoriesModule } from '../product-categories/product-categories.module';
+import { CategoriesModule } from '../categories/categories.module';
 
 import { ProductsModule } from '../products/products.module';
 import { OrdersModule } from '../orders/orders.module';
@@ -12,12 +12,10 @@ import { UsersModule } from '../users/users.module';
 @Module({
   imports: [
     UsersModule,
-    ProductCategoriesModule,
+    CategoriesModule,
     ProductsModule,
     OrdersModule,
-
     StoreCustomerModule,
-    ProductCategoriesModule,
   ],
   controllers: [ReportsController],
   providers: [ReportsService],
