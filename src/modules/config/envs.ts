@@ -18,6 +18,7 @@ interface EnvVars {
   SLACK_WEBHOOK_URL: string;
   JWT_SECRET: string;
   SECRET_KEY: string;
+  EXPIRES_IN: string;
 
   SUPER_USER_SECRET: string;
   DEFAULT_USER_NAME: string;
@@ -34,6 +35,7 @@ const envSchema = joi
     DATABASE_URL: joi.string().required(),
     SLACK_WEBHOOK_URL: joi.string().required(),
     JWT_SECRET: joi.string().required(),
+    EXPIRES_IN: joi.string().required(),
     SECRET_KEY: joi.string().required(),
 
     SUPER_USER_SECRET: joi.string().required(),
@@ -55,7 +57,7 @@ if (error) {
   throw new Error(`Config validation error: ${errorMessages}`);
 }
 
-const envVars: EnvVars = value;
+const envVars: EnvVars = value as EnvVars;
 
 export const envs = {
   port: envVars.PORT,
@@ -64,6 +66,7 @@ export const envs = {
   slackWebhookUrl: envVars.SLACK_WEBHOOK_URL,
 
   jwtSecret: envVars.JWT_SECRET,
+  expiresIn: envVars.EXPIRES_IN,
   secretKey: envVars.SECRET_KEY,
   superUserSecret: envVars.SUPER_USER_SECRET,
   defaultUserName: envVars.DEFAULT_USER_NAME,

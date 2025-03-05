@@ -7,12 +7,14 @@ import { ProductsService } from './products.service';
 import { OffersModule } from '../offers/offers.module';
 import { CategoriesModule } from '../categories/categories.module';
 import { VariantsController } from './controllers/variants.controller';
+import { SubcategoriesModule } from '../subcategories/subcategories.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Product.name, schema: ProductSchema }]),
     OffersModule,
     CategoriesModule,
+    SubcategoriesModule,
   ],
   controllers: [ProductsController, VariantsController],
   providers: [ProductsService],

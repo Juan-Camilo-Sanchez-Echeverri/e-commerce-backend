@@ -49,9 +49,7 @@ export class CategoriesService {
   async findById(id: string): Promise<Category> {
     const category = await this.categoryModel.findById(id);
 
-    if (!category) {
-      throw new NotFoundException(CATEGORY_NOT_FOUND);
-    }
+    if (!category) throw new NotFoundException(CATEGORY_NOT_FOUND);
 
     await this.populateDoc(category);
 

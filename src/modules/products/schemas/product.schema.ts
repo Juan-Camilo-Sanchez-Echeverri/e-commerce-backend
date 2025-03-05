@@ -1,88 +1,49 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import mongoose, { HydratedDocument } from 'mongoose';
+import mongoose, { HydratedDocument, Types } from 'mongoose';
 
-import { StoreConfigDocument } from '../../store-config/schemas/store-config.schema';
+import { validateMongo } from '@common/helpers';
+import { Status } from '@common/enums';
 
-@Schema({ timestamps: true })
+import { VariantDocument, VariantSchema } from './variant.schema';
+import { Category } from '../../categories/schemas/category.schema';
+import { Subcategory } from '../../subcategories/schemas/subcategory.schema';
+
+@Schema({ timestamps: true, versionKey: false })
 export class Product {
-  @Prop()
+  @Prop({ required: true })
   name: string;
 
-  @Prop()
+  @Prop({ required: true })
   description: string;
 
-  @Prop()
+  @Prop({ enum: Status, default: Status.ACTIVE })
+  status: Status;
+
+  @Prop({ required: true })
   price: number;
 
-  @Prop({ default: 0 })
-  stock: number;
-
-  @Prop({ default: 0 })
-  stockInitial: number;
-
-  @Prop({ default: 0 })
-  limitWarningStock: number;
-
-  @Prop()
-  images: string[];
-
-  @Prop({ default: true })
-  isActive: boolean;
-
-  @Prop({ default: 1 })
-  qualificationsCount: number;
-
-  @Prop({ default: 5 })
-  qualificationsAverage: number;
+  @Prop({
+    type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Category' }],
+    default: [],
+  })
+  categories: Category[];
 
   @Prop({
-    type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'ProductCategory' }],
-    set: (value: mongoose.Types.ObjectId[]) =>
-      value.length > 0 ? value : undefined,
+    type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Subcategory' }],
+    default: [],
   })
-  categories?: string[];
+  subcategories: Subcategory[];
 
-  @Prop({
-    type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'ProductAttribute' }],
-    set: (value: mongoose.Types.ObjectId[]) =>
-      value.length > 0 ? value : undefined,
-  })
-  attributes?: string[];
+  @Prop([VariantSchema])
+  variants: VariantDocument[];
 }
 
-export type ProductDocument = HydratedDocument<Product>;
 export const ProductSchema = SchemaFactory.createForClass(Product);
 
-ProductSchema.pre('save', async function (next) {
-  if (this.isModified('stock')) {
-    this.stockInitial = this.stock;
-  }
+export type ProductVariant = {
+  variants: Types.DocumentArray<VariantDocument>;
+};
 
-  const StoreConfigModel = this.model('StoreConfig');
-  const storeConfig: StoreConfigDocument | null =
-    await StoreConfigModel.findOne({});
+export type ProductDocument = HydratedDocument<Product, ProductVariant>;
 
-  if (!storeConfig) return next();
-
-  if (!this.limitWarningStock) {
-    this.limitWarningStock =
-      storeConfig?.settingsProduct?.limitWarningStock || 0;
-  }
-
-  if (!this.stock) {
-    this.stock = storeConfig?.settingsProduct?.genericStock || 0;
-    this.stockInitial = storeConfig?.settingsProduct?.genericStock || 0;
-  }
-  next();
-});
-
-ProductSchema.post(
-  'findOneAndUpdate',
-  async function (doc: ProductDocument, next) {
-    if (doc.stock) {
-      doc.stockInitial = doc.stock;
-      await doc.save();
-    }
-    next();
-  },
-);
+ProductSchema.post('save', validateMongo);

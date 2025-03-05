@@ -77,14 +77,10 @@ export class OrdersService {
     status: SalesStatus,
   ): Promise<OrderDocument | null> {
     const order = await this.findOneById(id);
-    if (status === SalesStatus.REJECTED || status === SalesStatus.ABANDONED) {
-      for (const product of order.products) {
-        await this.productsService.addStock(
-          String((product['product'] as { _id: string })._id),
-          product['quantity'] as number,
-        );
-      }
-    }
+    // if (status === SalesStatus.REJECTED || status === SalesStatus.ABANDONED) {
+    //   for (const product of order.products) {
+    //   }
+    // }
 
     return this.orderModel.findByIdAndUpdate(
       id,

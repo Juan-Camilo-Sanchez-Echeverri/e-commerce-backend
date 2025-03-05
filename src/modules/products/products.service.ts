@@ -5,125 +5,77 @@ import {
 } from '@nestjs/common';
 
 import { InjectModel } from '@nestjs/mongoose';
-import { FilterQuery, PaginateModel, Types } from 'mongoose';
+import { FilterQuery, PaginateModel } from 'mongoose';
 
-import { CreateProductDto, UpdateProductDto } from './dto';
+import { CreateProductDto, ParamsVariantDto, UpdateProductDto } from './dto';
 import { Product, ProductDocument } from './schemas/product.schema';
 
-import { PRODUCT_NOT_FOUND, PRODUCT_NAME_EXIST } from '../../common/constants';
+import { FilterDto } from '@common/dto';
+import { Status } from '@common/enums';
 
-import { OffersService } from '../offers/offers.service';
-import { OfferDocument } from '../offers/schemas/offer.schema';
-import { ProductCategoriesService } from '../product-categories/product-categories.service';
-import { ProductAttributesService } from '../product-attributes/product-attributes.service';
+import {
+  PRODUCT_NOT_FOUND,
+  PRODUCT_NAME_EXIST,
+} from './constants/products.constants';
+
+import { CreateVariantDto } from './dto/create-variant.dto';
+import { UpdateVariantDto } from './dto/update-variant.dto';
 
 @Injectable()
 export class ProductsService {
   constructor(
     @InjectModel(Product.name)
-    private readonly productModel: PaginateModel<Product>,
-
-    private readonly offersService: OffersService,
-    private readonly productCategoriesService: ProductCategoriesService,
-    private readonly productAttributesService: ProductAttributesService,
+    private readonly productModel: PaginateModel<ProductDocument>,
   ) {}
 
-  async findAll(): Promise<ProductDocument[]> {
-    return await this.productModel.find();
-  }
+  async findPaginate(query: FilterDto<ProductDocument>) {
+    const { data, limit, page } = query;
 
-  async findOne(id: string): Promise<ProductDocument> {
-    const product = await this.productModel.findById(id);
-    if (!product) throw new NotFoundException(PRODUCT_NOT_FOUND);
-    return product;
-  }
-
-  async findPublic() {
-    const products = await this.productModel.find({
-      isActive: true,
+    return await this.productModel.paginate(data, {
+      limit,
+      page,
+      populate: [
+        { path: 'categories', select: 'name', match: { status: 'active' } },
+        { path: 'subcategories', select: 'name', match: { status: 'active' } },
+      ],
     });
-
-    const offers = await this.offersService.findByQuery({});
-
-    const formattedProducts = products.map((product) => {
-      const offerForProduct = offers.find(
-        (offer) => String(offer.byProduct?.['_id']) === String(product._id),
-      );
-
-      if (offerForProduct) {
-        return this.formatProductWithOffer(product, offerForProduct);
-      }
-
-      return product;
-    });
-
-    return formattedProducts;
-  }
-
-  private formatProductWithOffer(
-    product: ProductDocument,
-    offer: OfferDocument,
-  ) {
-    let formatProduct: {
-      priceInOffer: number;
-      name: string;
-      description: string;
-      price: number;
-      stock: number;
-      stockInitial: number;
-      limitWarningStock: number;
-      images: string[];
-      isActive: boolean;
-      qualificationsCount: number;
-      qualificationsAverage: number;
-      categories?: string[];
-      attributes?: string[];
-      _id: Types.ObjectId;
-      __v: number;
-    } = { ...product.toObject(), priceInOffer: product.price };
-    if (offer.discountAmount) {
-      formatProduct = {
-        ...product.toObject(),
-        priceInOffer: product.price - offer.discountAmount,
-      };
-    }
-    if (offer.discountPercentage) {
-      formatProduct = {
-        ...product.toObject(),
-        priceInOffer:
-          product.price - (product.price * offer.discountPercentage) / 100,
-      };
-    }
-
-    return formatProduct;
   }
 
   async findOneByQuery(query: FilterQuery<ProductDocument> = {}) {
-    return await this.productModel.findOne(query);
+    const product = await this.productModel.findOne(query);
+
+    if (product) await this.populateDoc(product);
+
+    return product;
+  }
+
+  async findById(id: string) {
+    const product = await this.productModel.findById(id);
+
+    if (!product) throw new NotFoundException(PRODUCT_NOT_FOUND);
+
+    await this.populateDoc(product);
+
+    return product;
   }
 
   async create(createProductDto: CreateProductDto): Promise<ProductDocument> {
-    const { name, categories = [], attributes = [] } = createProductDto;
-
-    for (const category of categories) {
-      await this.productCategoriesService.findOne(category);
-    }
-
-    for (const attribute of attributes) {
-      await this.productAttributesService.findOne(attribute);
-    }
-
+    const { name } = createProductDto;
     await this.validateNameExist(name, null);
-    return await this.productModel.create(createProductDto);
+
+    const product = await this.productModel.create(createProductDto);
+
+    return await this.populateDoc(product);
   }
 
   async update(id: string, updateProductDto: UpdateProductDto) {
-    const productExist = await this.findOne(id);
-    let updateQuery: { [key: string]: any } = {};
-    const { name, categories, attributes, isActive } = updateProductDto;
+    const productExist = await this.findById(id);
+    let updateQuery = {};
+    const { name, categories, status, subcategories } = updateProductDto;
+
     if (name) await this.validateNameExist(name, id);
 
-    if (isActive !== undefined) {
+    if (status !== undefined) {
       await this.validateNameExist(productExist.name, id);
     }
 
@@ -133,54 +85,91 @@ export class ProductsService {
       updateQuery = updateProductDto;
     }
 
-    if (attributes !== undefined && attributes.length === 0) {
-      updateQuery = { $unset: { attributes: 1 }, ...updateQuery };
+    if (subcategories !== undefined && subcategories.length === 0) {
+      updateQuery = { $unset: { subcategories: 1 }, ...updateProductDto };
+    } else {
+      updateQuery = updateProductDto;
     }
 
-    return await this.productModel.findOneAndUpdate({ _id: id }, updateQuery, {
+    const result = await this.productModel.findByIdAndUpdate(id, updateQuery, {
       new: true,
     });
+
+    await this.populateDoc(result!);
+
+    return result;
   }
 
   async remove(id: string) {
     return await this.productModel.findByIdAndDelete(id);
   }
 
-  async updateQualificationAverage(id: string, qualification: number) {
-    const product = await this.findOne(id);
-    const { qualificationsAverage, qualificationsCount } = product;
-    const newQualificationAverage = this.roundToOneDecimalPlace(
-      (qualificationsCount * qualificationsAverage + qualification) /
-        (qualificationsCount + 1),
-    );
-    return await this.productModel.findByIdAndUpdate(
-      id,
-      {
-        qualificationsAverage: newQualificationAverage,
-        qualificationsCount: qualificationsCount + 1,
-      },
-      { new: true },
-    );
+  // Métodos para variantes
+
+  getVariant(product: ProductDocument, variantId: string) {
+    const variant = product.variants.id(variantId);
+
+    if (!variant) throw new NotFoundException('Variant not found');
+
+    return variant;
   }
 
-  async removeStock(id: string, quantity: number) {
-    return await this.productModel.findByIdAndUpdate(
-      id,
-      {
-        $inc: { stock: -quantity },
-      },
+  async addVariant(productId: string, createVariantDto: CreateVariantDto) {
+    const product = await this.productModel.findByIdAndUpdate(
+      productId,
+      { $push: { variants: createVariantDto }, status: Status.ACTIVE },
       { new: true },
     );
+
+    if (!product) throw new NotFoundException(PRODUCT_NOT_FOUND);
+
+    return product.variants[product.variants.length - 1];
   }
 
-  async addStock(id: string, quantity: number) {
-    return await this.productModel.findByIdAndUpdate(
-      id,
-      {
-        $inc: { stock: quantity },
-      },
+  async updateVariant(
+    params: ParamsVariantDto,
+    updateVariantDto: UpdateVariantDto,
+  ) {
+    const { productId, variantId } = params;
+
+    const product = await this.findById(productId);
+
+    const variant = this.getVariant(product, variantId);
+
+    if (updateVariantDto.images !== undefined) {
+      variant.images = updateVariantDto.images;
+    }
+
+    return variant;
+  }
+
+  async removeVariant(params: ParamsVariantDto) {
+    const { productId, variantId } = params;
+    const product = await this.findById(productId);
+    const variant = this.getVariant(product, variantId);
+
+    await this.productModel.findOneAndUpdate(
+      { _id: productId },
+      { $pull: { variants: { _id: variantId } } },
       { new: true },
     );
+
+    return variant;
+  }
+
+  async addVariantImages(params: ParamsVariantDto, imagePaths: string[]) {
+    const { productId, variantId } = params;
+    const product = await this.productModel.findOneAndUpdate(
+      { _id: productId, 'variants._id': variantId },
+      { $push: { 'variants.$.images': { $each: imagePaths } } },
+      { new: true },
+    );
+
+    if (!product) throw new NotFoundException(PRODUCT_NOT_FOUND);
+
+    const variant = this.getVariant(product, variantId);
+
+    return variant;
   }
 
   /**
@@ -194,12 +183,16 @@ export class ProductsService {
     const product = await this.productModel.findOne({
       name,
       _id: { $ne: productId },
-      isActive: true,
+      status: 'active',
     });
+
     if (product) throw new BadRequestException(PRODUCT_NAME_EXIST);
   }
 
-  private roundToOneDecimalPlace(num: number): number {
-    return Math.round((num + Number.EPSILON) * 10) / 10;
+  private async populateDoc(product: ProductDocument) {
+    return await product.populate([
+      { path: 'categories', select: 'name', match: { status: 'active' } },
+      { path: 'subcategories', select: 'name', match: { status: 'active' } },
+    ]);
   }
 }
