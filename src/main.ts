@@ -1,7 +1,10 @@
+import { join } from 'path';
+
 import { NestFactory } from '@nestjs/core';
 import { Logger, ValidationPipe, VersioningType } from '@nestjs/common';
 
 import * as compression from 'compression';
+import * as express from 'express';
 
 import { AppModule } from './app.module';
 import { envs } from '@modules/config/envs';
@@ -12,6 +15,8 @@ async function bootstrap(): Promise<void> {
     abortOnError: false,
     cors: true,
   });
+
+  app.use('/uploads', express.static(join(__dirname, '..', 'uploads')));
 
   const logger = new Logger('APP');
 
@@ -27,7 +32,6 @@ async function bootstrap(): Promise<void> {
     new ValidationPipe({
       whitelist: true,
       transform: true,
-      forbidNonWhitelisted: true,
       transformOptions: {
         enableImplicitConversion: true,
       },

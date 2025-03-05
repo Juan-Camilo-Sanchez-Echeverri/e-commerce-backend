@@ -31,7 +31,6 @@ import { LogModule } from '@modules/log/log.module';
 import { OffersModule } from '@modules/offers/offers.module';
 import { OrdersModule } from '@modules/orders/orders.module';
 import { PaymentsModule } from '@modules/payments/payments.module';
-import { ProductAttributesModule } from '@modules/product-attributes/product-attributes.module';
 import { CategoriesModule } from '@modules/categories/categories.module';
 import { ProductsModule } from '@modules/products/products.module';
 import { RegisterModule } from '@modules/register/register.module';
@@ -40,7 +39,6 @@ import { ReportsModule } from '@modules/reports/reports.module';
 import { SettingsEmailMarketingModule } from '@modules/settings-email-marketing/settings-email-marketing.module';
 
 import { StatesModule } from '@modules/states/states.module';
-import { StoreConfigModule } from '@modules/store-config/store-config.module';
 import { StoreCustomerModule } from '@modules/customers/store-customer.module';
 
 import { UsersModule } from '@modules/users/users.module';
@@ -50,15 +48,10 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { EmailRequestModule } from './modules/email-request/email-request.module';
 import { SubcategoriesModule } from './modules/subcategories/subcategories.module';
-import { MulterModule } from '@nestjs/platform-express';
-import { memoryStorage } from 'multer';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    MulterModule.register({
-      storage: memoryStorage(),
-    }),
     MongooseModule.forRootAsync({
       useClass: MongooseConfigService,
     }),
@@ -74,14 +67,12 @@ import { memoryStorage } from 'multer';
     OffersModule,
     OrdersModule,
     PaymentsModule,
-    ProductAttributesModule,
     CategoriesModule,
     ProductsModule,
     RegisterModule,
     ReportsModule,
     SettingsEmailMarketingModule,
     StatesModule,
-    StoreConfigModule,
     StoreCustomerModule,
     UsersModule,
     NotificationsModule,
