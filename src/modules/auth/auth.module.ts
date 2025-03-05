@@ -17,7 +17,7 @@ import { EmailRequestModule } from '../email-request/email-request.module';
     JwtModule.register({
       global: true,
       secret: envs.jwtSecret,
-      signOptions: { expiresIn: '20m' },
+      signOptions: { expiresIn: envs.expiresIn },
     }),
   ],
   providers: [AuthService],

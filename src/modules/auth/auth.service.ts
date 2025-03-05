@@ -65,7 +65,7 @@ export class AuthService {
 
     this.checkPasswordRequire(user, password);
 
-    const serviceUpdate = this.getService(user);
+    const serviceUpdate = this.getService(user.roles);
 
     await this.emailRequestService.validate({
       email,
@@ -132,7 +132,7 @@ export class AuthService {
       type: 'recoverPassword',
     });
 
-    const serviceUpdate = this.getService(user!);
+    const serviceUpdate = this.getService(user!.roles);
 
     await serviceUpdate.update(String(user?._id), { password });
 
@@ -144,11 +144,18 @@ export class AuthService {
       ignoreExpiration: true,
     });
 
-    const user = await this.findUserByEmail(payload.name);
+    const service = this.getService(payload.roles);
+
+    const user = await service.findOneByQuery({ _id: payload.sub });
 
     this.checkUser(user);
 
+    delete payload.iat;
+    delete payload.exp;
+
     const newToken = await this.generateToken(payload);
+
+    await this.updateUserLoginStatus(user!);
 
     return { token: newToken };
   }
@@ -206,7 +213,7 @@ export class AuthService {
   ): Promise<UserPlatform> {
     const iat = Math.floor(new Date().getTime() / 1000.0);
 
-    const serviceUpdate = this.getService(user);
+    const serviceUpdate = this.getService(user.roles);
 
     const updatedUser = await serviceUpdate.update(user.id, {
       lastLogin: new Date(iat * 1000),
@@ -225,8 +232,8 @@ export class AuthService {
     return payload;
   }
 
-  private getService(user: UserPlatform) {
-    return user.roles.includes(Role.Customer)
+  private getService(roles: Role[]) {
+    return roles.includes(Role.Customer)
       ? this.storeCustomerService
       : this.usersService;
   }

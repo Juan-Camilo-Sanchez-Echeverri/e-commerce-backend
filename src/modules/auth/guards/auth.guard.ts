@@ -79,7 +79,7 @@ export class AuthGuard implements CanActivate {
         throw new UnauthorizedException('El token ha expirado');
       }
 
-      throw error;
+      throw new BadRequestException(error.message);
     }
   }
 
