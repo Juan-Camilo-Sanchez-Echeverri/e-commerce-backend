@@ -12,7 +12,7 @@ import { envs } from '@modules/config/envs';
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, {
     snapshot: true,
-    abortOnError: false,
+    abortOnError: true,
     cors: true,
   });
 
