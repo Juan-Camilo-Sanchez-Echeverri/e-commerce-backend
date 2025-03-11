@@ -1,10 +1,9 @@
 import {
   IsArray,
   IsDate,
-  IsInt,
+  IsMongoId,
   IsNumber,
   IsOptional,
-  IsPositive,
   IsString,
   Max,
   MaxLength,
@@ -17,35 +16,28 @@ export class CreateCouponDto {
   @IsNotBlank({ message: 'The label cannot be empty.' })
   label: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
   @MaxLength(6)
   code?: string;
 
   @IsOptional()
-  @IsArray()
-  byCategories?: string[];
+  @IsMongoId()
+  byProduct?: string;
 
   @IsOptional()
   @IsNumber()
   byMinAmount?: number;
 
   @IsOptional()
-  @IsString()
-  byProduct?: string;
-
-  @IsOptional()
-  @IsNumber()
-  byMinProductQuantity?: number;
-
-  @IsOptional()
-  @IsArray()
-  byCategoryPair?: string[];
-
   @IsNumber()
   @Min(1)
   @Max(100)
-  discount: number;
+  discountPercentage?: number;
+
+  @IsOptional()
+  @IsNumber()
+  discountAmount?: number;
 
   @IsOptional()
   @IsArray()
@@ -56,8 +48,4 @@ export class CreateCouponDto {
 
   @IsDate()
   expirationDate: Date;
-
-  @IsInt()
-  @IsPositive()
-  limit: number;
 }

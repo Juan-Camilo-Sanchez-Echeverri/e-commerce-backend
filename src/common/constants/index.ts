@@ -1,6 +1,5 @@
 export * from './app.constants';
 export * from './auth.constants';
-export * from './coupons.constants';
 export * from './file-extensions.constants';
 export * from './otp.constants';
 export * from './payments.constants';

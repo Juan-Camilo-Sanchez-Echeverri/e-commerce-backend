@@ -15,6 +15,7 @@ import { FilterDto } from '@common/dto';
 import { CreateCouponDto, UpdateCouponDto } from './dto';
 import { CouponDocument } from './schemas/coupon.schema';
 import { CouponsService } from './coupons.service';
+import { ValidateProductCouponPipe } from './pipes/validate-product-coupon.pipe';
 
 @Controller('coupons')
 export class CouponsController {
@@ -35,7 +36,7 @@ export class CouponsController {
   @Post()
   @Roles('Admin')
   async create(
-    @Body() createCouponDto: CreateCouponDto,
+    @Body(ValidateProductCouponPipe) createCouponDto: CreateCouponDto,
   ): Promise<CouponDocument> {
     return await this.couponsService.create(createCouponDto);
   }
@@ -44,7 +45,7 @@ export class CouponsController {
   @Roles('Admin')
   async update(
     @Param('couponId') couponId: string,
-    @Body() updateCouponDto: UpdateCouponDto,
+    @Body(ValidateProductCouponPipe) updateCouponDto: UpdateCouponDto,
   ): Promise<CouponDocument | null> {
     return await this.couponsService.update(couponId, updateCouponDto);
   }
