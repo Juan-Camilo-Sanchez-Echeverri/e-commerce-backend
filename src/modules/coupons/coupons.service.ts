@@ -8,8 +8,10 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, PaginateModel, PaginateResult } from 'mongoose';
 
+import { FilterDto } from '@common/dto';
+import { Status } from '@common/enums';
+
 import { CreateCouponDto, UpdateCouponDto } from './dto';
-import { Coupon, CouponDocument } from './schemas/coupon.schema';
 
 import {
   COUPON_CHARACTERS_INVALID,
@@ -22,9 +24,14 @@ import {
   COUPON_NOT_AVAILABLE,
   COUPON_NOT_FOUND,
   DISCOUNT_IS_REQUIRED,
-} from '../../common/constants';
-import { setDateWithEndTime } from '../../common/helpers';
-import { FilterDto } from '../../common/dto';
+  COUPON_RULE_CHANGE_NOT_ALLOWED,
+  COUPON_START_DATE_INVALID,
+  COUPON_START_DATE_AFTER_EXPIRATION,
+  COUPON_ONE_RULE_PERMITTED,
+} from './constants/coupons.constants';
+
+import { Coupon, CouponDocument } from './schemas/coupon.schema';
+import { StoreCustomerDocument } from '../customers/schemas/customer.schema';
 
 @Injectable()
 export class CouponsService {
@@ -45,6 +52,10 @@ export class CouponsService {
     return await this.couponModel.findOne(query);
   }
 
+  async findByQuery(query: FilterQuery<Coupon>): Promise<CouponDocument[]> {
+    return await this.couponModel.find(query);
+  }
+
   async findPaginate(
     filterDto: FilterDto<Coupon>,
   ): Promise<PaginateResult<CouponDocument>> {
@@ -57,78 +68,58 @@ export class CouponsService {
     return await this.couponModel.find();
   }
 
-  async findByCode(code: string): Promise<CouponDocument> {
-    const coupon = await this.couponModel.findOne({ code });
-    if (!coupon) throw new NotFoundException(COUPON_NOT_FOUND);
-    return coupon;
-  }
-
   async create(createCouponDto: CreateCouponDto): Promise<CouponDocument> {
     if (!createCouponDto.code) {
       createCouponDto.code = this.generateCouponCode();
-    }
-
-    if (createCouponDto.code.length < 6) {
-      createCouponDto.code = this.finishCouponCode(createCouponDto.code);
-    }
-
-    if (createCouponDto.code.length === 6) {
+    } else {
       createCouponDto.code = this.formatCouponCode(createCouponDto.code);
     }
 
     await this.validateCouponCreation(createCouponDto);
-    const dateCurrentLocal = new Date();
-    dateCurrentLocal.setUTCHours(0, 0, 0, 0);
-    if (createCouponDto.startDate.getTime() !== dateCurrentLocal.getTime()) {
-      return await this.couponModel.create({
-        ...createCouponDto,
-        isActive: false,
-      });
-    }
+
     return await this.couponModel.create(createCouponDto);
   }
 
   async update(
     couponId: string,
     updateCouponDto: UpdateCouponDto,
-  ): Promise<CouponDocument | null> {
+  ): Promise<CouponDocument> {
     const existingCoupon = await this.findOneById(couponId);
-    await this.validateUpdateCoupon(existingCoupon, couponId, updateCouponDto);
+    await this.validateUpdateCoupon(couponId, updateCouponDto);
 
     updateCouponDto = this.updateDates(existingCoupon, updateCouponDto);
-    const status = this.isStartDateToday(updateCouponDto.startDate!);
-    return await this.couponModel.findByIdAndUpdate(
+
+    const updateCoupon = await this.couponModel.findByIdAndUpdate(
       couponId,
-      { ...updateCouponDto, isActive: status },
+      { $set: updateCouponDto },
       { new: true },
     );
+
+    return updateCoupon!;
   }
 
-  async remove(couponId: string): Promise<CouponDocument | null> {
-    return this.couponModel.findByIdAndDelete(couponId);
+  async remove(couponId: string): Promise<CouponDocument> {
+    await this.findOneById(couponId);
+    const couponDelete = await this.couponModel.findByIdAndDelete(couponId);
+
+    return couponDelete!;
   }
 
-  async updateUsedCoupon(id: string) {
+  async updateUsedCoupon(id: string, user: StoreCustomerDocument) {
     const coupon = await this.findOneById(id);
     const dateCurrentLocal = new Date();
-    const dateCouponExpiration = setDateWithEndTime(coupon.expirationDate);
 
-    if (dateCouponExpiration < dateCurrentLocal) {
+    if (coupon.expirationDate < dateCurrentLocal) {
       throw new BadRequestException(COUPON_EXPIRED);
     }
 
-    coupon.expirationDate = dateCouponExpiration;
-
-    if (coupon.limit > 0)
+    if (!coupon.usedBy.includes(user._id)) {
       return await this.couponModel.findByIdAndUpdate(id, {
-        $set: { limit: coupon.limit - 1, isUsed: true },
+        $push: { usedBy: user._id },
       });
+    }
 
-    if (coupon.limit === 0) {
-      await this.couponModel.findByIdAndUpdate(id, {
-        $set: { isActive: false },
-      });
-
+    if (coupon.usedBy.includes(user._id)) {
       throw new BadRequestException(COUPON_NOT_AVAILABLE);
     }
   }
@@ -137,159 +128,109 @@ export class CouponsService {
    * * Private methods
    */
 
-  private async validateUniqueCouponLabel(
+  private async validateUniqueLabel(
     label: string,
     couponId: string | null,
   ): Promise<void> {
     const offer = await this.couponModel.findOne({
       label,
       _id: { $ne: couponId },
-      isActive: true,
+      status: Status.ACTIVE,
     });
 
     if (offer) throw new BadRequestException(COUPON_LABEL_EXIST);
   }
 
-  private validateCouponRules(dto: CreateCouponDto | UpdateCouponDto): boolean {
-    const {
-      byCategories,
-      byProduct,
-      byCategoryPair,
-      byMinAmount,
-      byMinProductQuantity,
-    } = dto;
-    const ruleCount = [
-      byCategories,
-      byProduct,
-      byCategoryPair,
-      byMinAmount,
-      byMinProductQuantity,
-    ].filter((rule) => rule !== undefined).length;
+  private validateCouponRules(dto: CreateCouponDto): boolean {
+    const { byProduct, byMinAmount } = dto;
 
-    return ruleCount === 1;
+    const ruleCount = [byProduct, byMinAmount].filter(
+      (rule) => rule !== undefined,
+    );
+
+    return ruleCount.length === 1;
   }
 
   private async validateCouponCreation(
     createCouponDto: CreateCouponDto,
   ): Promise<void> {
-    const { label, discount, code } = createCouponDto;
+    const { label, discountAmount, discountPercentage, code } = createCouponDto;
 
-    if (!this.validateCouponRules(createCouponDto))
-      throw new Error('Cada cupón debe tener exactamente una regla.');
+    if (!this.validateCouponRules(createCouponDto)) {
+      throw new BadRequestException(COUPON_ONE_RULE_PERMITTED);
+    }
 
-    if (!discount) throw new BadRequestException(DISCOUNT_IS_REQUIRED);
+    if (!discountAmount && !discountPercentage) {
+      throw new BadRequestException(DISCOUNT_IS_REQUIRED);
+    }
 
-    await this.validateUniqueCouponLabel(label, null);
+    await this.validateUniqueLabel(label, null);
 
-    const { expirationDate } = this.validateDates(
-      createCouponDto.expirationDate,
-      createCouponDto.startDate,
-    );
-    createCouponDto.expirationDate = expirationDate;
+    const { expirationDate, startDate } = createCouponDto;
+
+    this.validateDates(expirationDate, startDate);
 
     await this.validCodeCoupon(code!);
-  }
-
-  private validateBothDates(updateCouponDto: UpdateCouponDto): UpdateCouponDto {
-    const { expirationDate, startDate } = this.validateDates(
-      updateCouponDto.expirationDate!,
-      updateCouponDto.startDate!,
-    );
-    updateCouponDto.expirationDate = expirationDate;
-    updateCouponDto.startDate = startDate;
-    return updateCouponDto;
-  }
-
-  private isStartDateToday(startDate: Date): boolean {
-    const dateCurrentLocal = new Date();
-    dateCurrentLocal.setUTCHours(0, 0, 0, 0);
-    return startDate.getTime() === dateCurrentLocal.getTime();
   }
 
   private updateDates(
     existingCoupon: CouponDocument,
     updateCouponDto: UpdateCouponDto,
   ): UpdateCouponDto {
-    if (updateCouponDto.expirationDate) {
-      const { expirationDate } = this.validateDates(
-        updateCouponDto.expirationDate,
-        existingCoupon.startDate,
-      );
-      updateCouponDto.expirationDate = expirationDate;
+    const { expirationDate, startDate } = updateCouponDto;
+
+    if (expirationDate && startDate) {
+      this.validateDates(expirationDate, startDate);
+
+      return updateCouponDto;
     }
 
-    if (updateCouponDto.expirationDate && updateCouponDto.startDate) {
-      updateCouponDto = this.validateBothDates(updateCouponDto);
+    if (expirationDate) {
+      this.validateDates(expirationDate, existingCoupon.startDate);
+
+      return updateCouponDto;
     }
 
-    if (updateCouponDto.startDate) {
-      const { startDate } = this.validateDates(
-        existingCoupon.expirationDate,
-        updateCouponDto.startDate,
-      );
-      updateCouponDto.startDate = startDate;
+    if (startDate) {
+      this.validateDates(existingCoupon.expirationDate, startDate);
+
+      return updateCouponDto;
     }
 
     return updateCouponDto;
   }
 
-  private validateDates(
-    expirationDate: Date,
-    startDate: Date,
-  ): { startDate: Date; expirationDate: Date } {
+  private validateDates(expirationDate: Date, startDate: Date) {
     const dateCurrentLocal = new Date();
-    dateCurrentLocal.setUTCHours(0, 0, 0, 0);
-    const dateExpirationCoupon = setDateWithEndTime(expirationDate);
 
-    if (dateExpirationCoupon < dateCurrentLocal) {
+    if (startDate < dateCurrentLocal) {
+      throw new BadRequestException(COUPON_START_DATE_INVALID);
+    }
+
+    if (expirationDate < dateCurrentLocal) {
       throw new BadRequestException(COUPON_EXPIRATION_DATE);
     }
 
-    if (startDate < dateCurrentLocal) {
-      throw new BadRequestException(
-        'La fecha de inicio no puede ser menor a la fecha actual',
-      );
+    if (startDate > expirationDate) {
+      throw new BadRequestException(COUPON_START_DATE_AFTER_EXPIRATION);
     }
-
-    if (startDate > dateExpirationCoupon) {
-      throw new BadRequestException(
-        'La fecha de inicio no puede ser mayor a la fecha de expiración',
-      );
-    }
-
-    return { startDate, expirationDate: dateExpirationCoupon };
   }
 
   private async validateUpdateCoupon(
-    existingCoupon: CouponDocument,
     couponId: string,
     updateCouponDto: UpdateCouponDto,
   ): Promise<void> {
-    const {
-      code,
-      label,
-      byCategories,
-      byCategoryPair,
-      byMinAmount,
-      byMinProductQuantity,
-      byProduct,
-    } = updateCouponDto;
+    const { code, label, byMinAmount, byProduct } = updateCouponDto;
 
-    const ruleCount = [
-      byCategories,
-      byCategoryPair,
-      byMinAmount,
-      byMinProductQuantity,
-      byProduct,
-    ].filter((rule) => rule !== undefined).length;
+    const ruleCount = [byMinAmount, byProduct].filter(
+      (rule) => rule !== undefined,
+    );
 
-    if (ruleCount === 1) {
-      throw new BadRequestException(
-        'No se puede cambiar la regla de un cupón existente. Cree uno nuevo en su lugar.',
-      );
+    if (ruleCount.length === 1) {
+      throw new BadRequestException(COUPON_RULE_CHANGE_NOT_ALLOWED);
     }
 
-    if (label) await this.validateUniqueCouponLabel(label, couponId);
+    if (label) await this.validateUniqueLabel(label, couponId);
 
     if (code) await this.validCodeCoupon(code);
   }
@@ -297,23 +238,25 @@ export class CouponsService {
   private formatCouponCode(code: string): string {
     const trimmedCode = code.trim().toUpperCase();
 
-    if (trimmedCode.length > 6)
+    if (trimmedCode.length > 6) {
       throw new BadRequestException(COUPON_CODE_LENGTH);
+    }
 
     const hasLetters = /[A-Z]/.test(trimmedCode);
     const hasNumbers = /[0-9]/.test(trimmedCode);
 
-    if (!hasLetters || !hasNumbers)
+    if (!hasLetters || !hasNumbers) {
       throw new BadRequestException(COUPON_FORMAT_INVALID);
+    }
 
     const hasInvalidCharacters = /[0oOlLiI]/.test(trimmedCode);
 
-    if (hasInvalidCharacters)
+    if (hasInvalidCharacters) {
       throw new BadRequestException(COUPON_CHARACTERS_INVALID);
+    }
 
     return trimmedCode;
   }
-
   private generateCouponCode(length = 6): string {
     const letters = 'ABCDEFGHJKMNPQRSTUVWXYZ';
     const numbers = '123456789';
@@ -330,54 +273,51 @@ export class CouponsService {
     return this.formatCouponCode(couponCode);
   }
 
-  private finishCouponCode(partialCode: string, additionalLength = 6): string {
-    const characters = 'ABCDEFGHJKMNPQRSTUVWXYZ123456789';
-    let couponCode = partialCode;
-
-    for (let i = 0; i < additionalLength; i++) {
-      const randomIndex = Math.floor(Math.random() * characters.length);
-      couponCode += characters[randomIndex];
-    }
-
-    return couponCode.trim().toUpperCase();
-  }
-
   private async validCodeCoupon(code: string): Promise<void> {
     const codeExist = await this.couponModel.findOne({
       code: code.toUpperCase(),
-      isActive: true,
+      status: Status.ACTIVE,
     });
+
     if (codeExist) throw new BadRequestException(COUPON_EQUAL);
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  @Cron(CronExpression.EVERY_MINUTE)
   async activeCoupons(): Promise<void> {
-    const dateCurrentLocal = new Date();
-    dateCurrentLocal.setUTCHours(0, 0, 0, 0);
-    const coupons = await this.couponModel.find({
-      startDate: dateCurrentLocal,
-      isActive: false,
-    });
-    if (coupons.length > 0) {
-      await this.couponModel.updateMany(
-        { startDate: dateCurrentLocal, isActive: false },
-        { isActive: true },
-      );
-    }
+    const dateCurrent = new Date();
+
+    const query = {
+      startDate: { $lte: dateCurrent },
+      expirationDate: { $gte: dateCurrent },
+      status: Status.INACTIVE,
+    };
+
+    const activeCoupons = await this.findByQuery(query);
+
+    await Promise.all(
+      activeCoupons.map(async (coupon) => {
+        await this.couponModel.findByIdAndUpdate(coupon._id, {
+          status: Status.ACTIVE,
+        });
+      }),
+    );
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  @Cron(CronExpression.EVERY_MINUTE)
   async deactivateCoupons(): Promise<void> {
-    const dateCurrentLocal = new Date();
+    const dateCurrent = new Date();
+
     const coupons = await this.couponModel.find({
-      expirationDate: { $lt: dateCurrentLocal },
-      isActive: true,
+      expirationDate: { $lt: dateCurrent },
+      status: Status.ACTIVE,
     });
-    if (coupons.length > 0) {
-      await this.couponModel.updateMany(
-        { expirationDate: { $lt: dateCurrentLocal }, isActive: true },
-        { isActive: false },
-      );
-    }
+
+    await Promise.all(
+      coupons.map(async (coupon) => {
+        await this.couponModel.findByIdAndUpdate(coupon._id, {
+          status: Status.INACTIVE,
+        });
+      }),
+    );
   }
 }

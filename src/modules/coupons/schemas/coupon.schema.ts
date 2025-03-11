@@ -1,6 +1,13 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import mongoose, { HydratedDocument } from 'mongoose';
-import { validateMongo } from '../../../common/helpers/validate-mongo.helper';
+import mongoose, { HydratedDocument, Types } from 'mongoose';
+
+import { validateMongo } from '@common/helpers/validate-mongo.helper';
+import { Status } from '@common/enums';
+
+import { ProductDocument } from '../../products/schemas/product.schema';
+import { StoreCustomerDocument } from '../../customers/schemas/customer.schema';
+
+export type PopulatedEntity<T> = Types.ObjectId | (T & { _id: Types.ObjectId });
 
 @Schema({ timestamps: true })
 export class Coupon {
@@ -10,37 +17,42 @@ export class Coupon {
   @Prop({ index: true, required: true })
   code: string;
 
-  @Prop()
-  byProduct: string;
+  @Prop({
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Product',
+    autopopulate: { select: 'name' },
+  })
+  byProduct?: PopulatedEntity<ProductDocument>;
 
   @Prop()
-  discount: number;
+  byMinAmount?: number;
 
-  @Prop({ default: true })
-  isActive: boolean;
+  @Prop()
+  discountPercentage?: number;
 
-  @Prop({ default: false })
-  isUsed: boolean;
+  @Prop()
+  discountAmount?: number;
+
+  @Prop({ enum: Status, default: Status.INACTIVE })
+  status: Status;
 
   @Prop({
     type: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        ref: 'StoreCustomer',
         autopopulate: { select: '-__v' },
+        default: [],
       },
     ],
   })
-  usedBy?: string[];
+  usedBy: PopulatedEntity<StoreCustomerDocument>[];
 
   @Prop({ type: Date })
   startDate: Date;
 
   @Prop({ type: Date })
   expirationDate: Date;
-
-  @Prop()
-  limit: number;
 }
 
 export type CouponDocument = HydratedDocument<Coupon>;
@@ -48,12 +60,3 @@ export const CouponSchema = SchemaFactory.createForClass(Coupon);
 
 CouponSchema.post('save', validateMongo);
 CouponSchema.post('findOneAndUpdate', validateMongo);
-
-function arrayLimit(val: string[]) {
-  return val.length <= 2;
-}
-
-// CUPONES  POR TIEMPO SOLAMENTE USAR UNA VEZ POR USUARIO REGISTRADO (COMRADOR)
-// DESCUENTO POR PORCENTAJE O PRECIO
-
-//REGLA DE MONTO MINIMO DE COMPRA , MONTO MAXIMO DE DESCUENTO
