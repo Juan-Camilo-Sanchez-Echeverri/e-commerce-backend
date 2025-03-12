@@ -19,10 +19,11 @@ import { EmailRequest } from './schemas/email-request.schema';
 import { ValidateEmailRequest } from './dto/validate-email-request.dto';
 import { activeAccount } from '../notifications/templates/email/active-account';
 import { NotificationsService } from '../notifications/notifications.service';
+import { recoverPassword } from '../notifications/templates/email/recover-password';
 
 const MAX_ATTEMPTS = 3;
 
-interface DataEmailActive {
+interface DataEmailSend {
   email: string;
   token: string;
   password: boolean;
@@ -54,13 +55,17 @@ export class EmailRequestService {
       await this.sendEmailActive({ email, token, password });
     }
 
+    if (type === 'recoverPassword') {
+      await this.sendEmailRecoverPassword({ email, token, password });
+    }
+
     await this.emailRequestModel.findOneAndUpdate({ email }, update, {
       new: true,
       upsert: true,
     });
   }
 
-  private async sendEmailActive(data: DataEmailActive) {
+  private async sendEmailActive(data: DataEmailSend) {
     const dataEmail = {
       to: data.email,
       subject: 'Bienvenido a la tienda',
@@ -68,6 +73,16 @@ export class EmailRequestService {
     };
 
     await this.notificationService.sendEmail(dataEmail);
+  }
+
+  private sendEmailRecoverPassword(data: DataEmailSend) {
+    const dataEmail = {
+      to: data.email,
+      subject: 'Recuperar contraseña',
+      htmlContent: recoverPassword(data),
+    };
+
+    return this.notificationService.sendEmail(dataEmail);
   }
 
   validateAttempts(request: EmailRequest, type: TypeRequest): void {
