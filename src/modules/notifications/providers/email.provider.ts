@@ -3,22 +3,24 @@ import * as nodemailer from 'nodemailer';
 import { Options } from 'nodemailer/lib/mailer';
 
 import { IEmail } from '../interfaces/email.interface';
+import { envs } from '../../config';
 
 @Injectable()
 export class EmailProvider {
   constructor() {}
   logger = new Logger('EmailProvider');
-  private async getEmailCredentials() {
+
+  private getEmailCredentials() {
     return {
-      user: 'juancamilosanche65@gmail.com',
-      pass: 'ancc moan mjbx edcg',
+      user: envs.userNotifications,
+      pass: envs.passwordNotifications,
     };
   }
 
   async sendEmail(data: IEmail) {
     try {
       const { to, subject, htmlContent } = data;
-      const { user, pass } = await this.getEmailCredentials();
+      const { user, pass } = this.getEmailCredentials();
 
       const transporter = nodemailer.createTransport({
         host: 'smtp.gmail.com',
