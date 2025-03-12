@@ -65,10 +65,10 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async recoverPassword(
     @Body() recoverPasswordDto: RecoverPasswordDto,
-  ): Promise<{ message: string }> {
+  ): Promise<{ send: boolean }> {
     await this.authService.recoverPassword(recoverPasswordDto);
 
-    return { message: 'Se envió el correo de recuperación' };
+    return { send: true };
   }
 
   @Public()

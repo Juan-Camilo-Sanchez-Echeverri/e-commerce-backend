@@ -133,8 +133,12 @@ export class AuthService {
     });
 
     const serviceUpdate = this.getService(user!.roles);
+    const iat = Math.floor(new Date().getTime() / 1000.0);
 
-    await serviceUpdate.update(String(user?._id), { password });
+    await serviceUpdate.update(String(user?._id), {
+      password,
+      lastLogin: new Date(iat * 1000),
+    });
 
     return { changed: true };
   }
