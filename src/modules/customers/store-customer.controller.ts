@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 
 import { Roles } from '@common/decorators';
+import { Status } from '@common/enums';
 
 import { UserPlatform } from '../auth/interfaces';
 
@@ -63,6 +64,8 @@ export class StoreCustomerController {
   @Delete(':id')
   @Roles('Admin')
   async remove(@Param('id') id: string) {
-    return await this.storeCustomerService.remove(id);
+    return await this.storeCustomerService.update(id, {
+      status: Status.DELETED,
+    });
   }
 }
