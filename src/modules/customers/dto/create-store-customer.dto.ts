@@ -1,6 +1,7 @@
 import { IsEmail, IsOptional, IsString } from 'class-validator';
 
 import { IsNotBlank } from '@common/decorators';
+import { Status } from '@common/enums';
 
 export class CreateStoreCustomerDto {
   @IsString()
@@ -24,6 +25,8 @@ export class CreateStoreCustomerDto {
   @IsString()
   @IsOptional()
   state?: string;
+
+  status?: Status;
 
   @IsString()
   @IsOptional()
