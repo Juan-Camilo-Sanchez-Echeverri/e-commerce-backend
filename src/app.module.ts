@@ -35,8 +35,6 @@ import { CategoriesModule } from '@modules/categories/categories.module';
 import { ProductsModule } from '@modules/products/products.module';
 import { RegisterModule } from '@modules/register/register.module';
 
-import { SettingsEmailMarketingModule } from '@modules/settings-email-marketing/settings-email-marketing.module';
-
 import { StatesModule } from '@modules/states/states.module';
 import { StoreCustomerModule } from '@modules/customers/store-customer.module';
 
@@ -69,7 +67,6 @@ import { SubcategoriesModule } from './modules/subcategories/subcategories.modul
     CategoriesModule,
     ProductsModule,
     RegisterModule,
-    SettingsEmailMarketingModule,
     StatesModule,
     StoreCustomerModule,
     UsersModule,
