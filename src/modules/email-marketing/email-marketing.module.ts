@@ -9,16 +9,16 @@ import {
   EmailMarketingSchema,
 } from './schemas/email-marketing.schema';
 
-import { SettingsEmailMarketingModule } from '../settings-email-marketing/settings-email-marketing.module';
 import { StoreCustomerModule } from '../customers/store-customer.module';
 import { EmailSenderService } from './providers/email-sender.service';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
+    NotificationsModule,
     MongooseModule.forFeature([
       { name: EmailMarketing.name, schema: EmailMarketingSchema },
     ]),
-    SettingsEmailMarketingModule,
     StoreCustomerModule,
   ],
   controllers: [EmailMarketingController],
