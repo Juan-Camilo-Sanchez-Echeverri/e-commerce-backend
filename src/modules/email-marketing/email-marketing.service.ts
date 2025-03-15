@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { SchedulerRegistry } from '@nestjs/schedule';
@@ -7,17 +11,14 @@ import {
   EmailMarketingDocument,
   EmailMarketing,
 } from './schemas/email-marketing.schema';
-import { SettingsEmailMarketingService } from '../settings-email-marketing/settings-email-marketing.service';
 import { EmailSenderService } from './providers/email-sender.service';
 import { CreateEmailMarketingDto, UpdateEmailMarketingDto } from './dto';
-import { SettingsEmailMarketingDocument } from '../settings-email-marketing/schema/settings-email-marketing.schema';
 
 @Injectable()
 export class EmailMarketingService {
   constructor(
     @InjectModel(EmailMarketing.name)
     private readonly emailMarketingModel: Model<EmailMarketing>,
-    private readonly settingsEmailMarketingService: SettingsEmailMarketingService,
     private readonly emailSenderService: EmailSenderService,
     private readonly schedulerRegistry: SchedulerRegistry,
   ) {}
@@ -25,15 +26,20 @@ export class EmailMarketingService {
   async send(
     createEmailMarketingDto: CreateEmailMarketingDto,
   ): Promise<EmailMarketingDocument> {
-    const config = await this.settingsEmailMarketingService.finOneByQuery({});
-
     const newCampaign = await this.emailMarketingModel.create(
       createEmailMarketingDto,
     );
 
+    if (createEmailMarketingDto.sendDate) {
+      const dateCurrent = new Date();
+
+      if (createEmailMarketingDto.sendDate < dateCurrent) {
+        throw new BadRequestException('Send date must be in the future.');
+      }
+    }
+
     await this.createAndScheduleJob(
       newCampaign.id as string,
-      config!,
       createEmailMarketingDto,
     );
 
@@ -53,8 +59,6 @@ export class EmailMarketingService {
       throw new NotFoundException('Campaign not found or already sent.');
     }
 
-    const config = await this.settingsEmailMarketingService.finOneByQuery();
-
     this.stopAndRemoveJob(id);
 
     const updatedCampaign = await this.emailMarketingModel.findByIdAndUpdate(
@@ -63,7 +67,7 @@ export class EmailMarketingService {
       { new: true },
     );
 
-    await this.createAndScheduleJob(id, config!, updateEmailMarketingDto);
+    await this.createAndScheduleJob(id, updateEmailMarketingDto);
 
     return updatedCampaign!;
   }
@@ -90,14 +94,9 @@ export class EmailMarketingService {
 
   private async createAndScheduleJob(
     jobId: string,
-    config: SettingsEmailMarketingDocument,
     emailMarketingDto: CreateEmailMarketingDto | UpdateEmailMarketingDto,
   ): Promise<void> {
-    await this.emailSenderService.sendEmailsToUsers(
-      config,
-      emailMarketingDto,
-      jobId,
-    );
+    await this.emailSenderService.sendEmailsToUsers(emailMarketingDto, jobId);
   }
 
   private stopAndRemoveJob(jobName: string): void {
