@@ -1,38 +1,45 @@
 services:
-  backend:
-    depends_on:
-      - db
-    build:
-      context: .
-      dockerfile: DockerFile
-    container_name: backend
-    restart: always
+  mongo1:
+    image: mongo:latest
+    container_name: mongo1
+    command: [ "--replSet", "rs0", "--bind_ip_all", "--port", "27017" ]
     ports:
-      - '${PORT}:${PORT}'
-    env_file:
-      - .env
-    environment:
-      - NODE_ENV=production
-      - TZ=America/Bogota
-    networks:
-      - app-network
-
-  db:
-    build:
-      context: .
-      dockerfile: DockerFile.mongo
-    container_name: mongo
-    restart: always
-    ports:
-      - 27018:27017
-    environment:
-      MONGODB_DATABASE: store
+      - 27017:27017
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: echo "try { rs.status() } catch (err) { rs.initiate({_id:'rs0',members:[{_id:0,host:'host.docker.internal:27017',priority:1},{_id:1,host:'host.docker.internal:27018',priority:0.5},{_id:2,host:'host.docker.internal:27019',priority:0.5}]}) }" | mongosh --port 27017 --quiet
+      interval: 5s
+      timeout: 30s
+      start_period: 0s
+      start_interval: 1s
+      retries: 30
     volumes:
-      - ./mongo:/data/db
-    networks:
-      - app-network
+      - "./mongo/mongo1/db:/data/db"
+      - "./mongo/mongo1/configdb:/data/configdb"
 
+  mongo2:
+    image: mongo:latest
+    container_name: mongo2
+    command: [ "--replSet", "rs0", "--bind_ip_all", "--port", "27018" ]
+    ports:
+      - 27018:27018
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - "./mongo/mongo2/db:/data/db"
+      - "./mongo/mongo2/configdb:/data/configdb"
 
-networks:
-  app-network:
-    driver: bridge
+  mongo3:
+    image: mongo:latest
+    container_name: mongo3
+    command: [ "--replSet", "rs0", "--bind_ip_all", "--port", "27019" ]
+    ports:
+      - 27019:27019
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - "./mongo/mongo3/db:/data/db"
+      - "./mongo/mongo3/configdb:/data/configdb"
+
+volumes: {}
