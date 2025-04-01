@@ -19,6 +19,11 @@ import {
 
 import { CreateOfferDto, UpdateOfferDto } from './dto';
 import { Offer, OfferDocument } from './schemas/offer.schema';
+import {
+  DISCOUNT_IS_REQUIRED,
+  OFFER_LABEL_EXIST,
+  OFFER_NOT_FOUND,
+} from './constants/offers.constants';
 
 const logger = new Logger('OffersService');
 @Injectable()
@@ -30,7 +35,7 @@ export class OffersService {
   async findOneById(id: string): Promise<OfferDocument> {
     const offer = await this.offerModel.findById(id);
 
-    if (!offer) throw new NotFoundException('La oferta no existe');
+    if (!offer) throw new NotFoundException(OFFER_NOT_FOUND);
 
     return offer;
   }
@@ -99,7 +104,7 @@ export class OffersService {
     });
 
     if (offer) {
-      throw new BadRequestException('Ya existe una oferta con esa etiqueta');
+      throw new BadRequestException(OFFER_LABEL_EXIST);
     }
   }
 
@@ -107,9 +112,7 @@ export class OffersService {
     const { discountAmount, discountPercentage } = dto;
 
     if (!discountAmount && !discountPercentage) {
-      throw new BadRequestException(
-        'discountAmount or discountPercentage is required',
-      );
+      throw new BadRequestException(DISCOUNT_IS_REQUIRED);
     }
   }
 
