@@ -12,7 +12,7 @@
     "start:dev": "set NODE_ENV=local && nest start --watch",
     "start:debug": "set NODE_ENV=local && nest start --debug --watch",
     "start:prod": "node dist/main",
-    "start:docker": "docker compose up --build -d",
+    "start:db": "docker compose up --build -d",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "pm2:start:dev": "set NODE_ENV=development && npm i && npm run build && pm2 start --name store dist/main.js",
     "pm2:restart:dev": "set NODE_ENV=development && npm i && npm run build && pm2 restart --name store dist/main.js --update-env",
@@ -20,7 +20,7 @@
     "pm2:restart:prod": "npm i && npm run build && set NODE_ENV=production && pm2 restart --name store dist/main.js --update-env"
   },
   "dependencies": {
-    "@nestjs/common": "11.0.10",
+    "@nestjs/common": "^11.0.12",
     "@nestjs/config": "4.0.0",
     "@nestjs/core": "11.0.10",
     "@nestjs/event-emitter": "3.0.1",
