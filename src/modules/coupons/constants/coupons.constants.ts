@@ -6,9 +6,6 @@ export const COUPON_CODE_LENGTH =
 
 export const COUPON_EQUAL = 'Coupon code already exists';
 
-export const COUPON_EXPIRATION_DATE =
-  'The expirationDate cannot be less than the current date.';
-
 export const COUPON_EXPIRED = 'Coupon has expired';
 
 export const COUPON_FORMAT_INVALID = 'The code must be alphanumeric';
@@ -24,11 +21,5 @@ export const DISCOUNT_IS_REQUIRED =
 
 export const COUPON_RULE_CHANGE_NOT_ALLOWED =
   'Cannot change the rule of an existing coupon. Create a new one instead';
-
-export const COUPON_START_DATE_INVALID =
-  'startDate cannot be earlier than the current date';
-
-export const COUPON_START_DATE_AFTER_EXPIRATION =
-  'startDate cannot be later than the expirationDate';
 
 export const COUPON_ONE_RULE_PERMITTED = 'Only one rule is permitted';
