@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument } from 'mongoose';
-import mongoose from 'mongoose';
+import mongoose, { HydratedDocument } from 'mongoose';
+
+import { Status } from '@common/enums';
 
 @Schema({ timestamps: true })
 export class Offer {
@@ -26,8 +27,8 @@ export class Offer {
   })
   byProduct?: string;
 
-  @Prop({ default: true })
-  isActive: boolean;
+  @Prop({ enum: Status, default: Status.INACTIVE })
+  status: Status;
 
   @Prop({ type: Date })
   startDate: Date;

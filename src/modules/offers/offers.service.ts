@@ -9,11 +9,16 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, PaginateModel, Types } from 'mongoose';
 
+import { FilterDto } from '@common/dto';
+import { Status } from '@common/enums';
+import {
+  EXPIRATION_DATE_INVALID,
+  START_DATE_AFTER_EXPIRATION,
+  START_DATE_INVALID,
+} from '@common/constants';
+
 import { CreateOfferDto, UpdateOfferDto } from './dto';
 import { Offer, OfferDocument } from './schemas/offer.schema';
-
-import { setDateWithEndTime } from '../../common/helpers';
-import { FilterDto } from '../../common/dto';
 
 const logger = new Logger('OffersService');
 @Injectable()
@@ -47,117 +52,50 @@ export class OffersService {
   }
 
   async create(createOfferDto: CreateOfferDto): Promise<OfferDocument> {
+    const { expirationDate, startDate, label } = createOfferDto;
     this.validateRulesOffer(createOfferDto);
-    await this.validateUniqueOfferLabel(createOfferDto.label, null);
 
-    const { expirationDate } = this.validateDates(
-      createOfferDto.expirationDate,
-      createOfferDto.startDate,
-    );
+    await this.validateUniqueLabel(label, null);
 
-    createOfferDto.expirationDate = expirationDate;
+    this.validateDates(expirationDate, startDate);
 
-    const dateCurrentLocal = new Date();
-    dateCurrentLocal.setUTCHours(0, 0, 0, 0);
-
-    if (createOfferDto.startDate.getTime() !== dateCurrentLocal.getTime()) {
-      return await this.offerModel.create({
-        ...createOfferDto,
-        isActive: false,
-      });
-    }
-
-    return await this.offerModel.create({ ...createOfferDto });
+    return await this.offerModel.create(createOfferDto);
   }
 
   async update(
     offer: OfferDocument,
     updateOfferDto: UpdateOfferDto,
   ): Promise<OfferDocument | null> {
-    await this.validateOfferUpdate(updateOfferDto, offer);
+    const { label } = updateOfferDto;
 
-    updateOfferDto = this.updateDates(offer, updateOfferDto);
-    const status = this.isStartDateToday(updateOfferDto.startDate!);
+    if (label && label !== offer.label) {
+      await this.validateUniqueLabel(label, offer._id);
+    }
+
+    this.updateDates(offer, updateOfferDto);
 
     return await this.offerModel.findByIdAndUpdate(
       offer._id,
-      { ...updateOfferDto, isActive: status },
+      { $set: updateOfferDto },
       { new: true },
     );
   }
 
-  private isStartDateToday(startDate: Date): boolean {
-    const dateCurrentLocal = new Date();
-    dateCurrentLocal.setUTCHours(0, 0, 0, 0);
-    return startDate.getTime() === dateCurrentLocal.getTime();
+  async remove(offerId: string): Promise<OfferDocument> {
+    await this.findOneById(offerId);
+    const offerDelete = await this.offerModel.findByIdAndDelete(offerId);
+
+    return offerDelete!;
   }
 
-  private updateDates(
-    offer: OfferDocument,
-    updateOfferDto: UpdateOfferDto,
-  ): UpdateOfferDto {
-    if (updateOfferDto.expirationDate) {
-      const { expirationDate } = this.validateDates(
-        updateOfferDto.expirationDate,
-        offer.startDate,
-      );
-
-      updateOfferDto.expirationDate = expirationDate;
-    }
-
-    if (updateOfferDto.startDate) {
-      const { startDate } = this.validateDates(
-        updateOfferDto.startDate,
-        offer.startDate,
-      );
-      updateOfferDto.startDate = startDate;
-    }
-
-    if (updateOfferDto.expirationDate && updateOfferDto.startDate) {
-      updateOfferDto = this.validateBothDates(updateOfferDto);
-    }
-
-    return updateOfferDto;
-  }
-
-  private async validateOfferUpdate(
-    updateOfferDto: UpdateOfferDto,
-    offer: OfferDocument,
-  ) {
-    const { byCategory, byProduct } = updateOfferDto;
-    if (byCategory || byProduct) {
-      throw new BadRequestException(
-        'No se puede modificar la regla de la oferta. cree una nueva en su lugar.',
-      );
-    }
-
-    if (updateOfferDto.isActive !== undefined || updateOfferDto.label) {
-      await this.validateUniqueOfferLabel(offer.label, offer._id);
-    }
-  }
-
-  private validateBothDates(updateOfferDto: UpdateOfferDto): UpdateOfferDto {
-    const { expirationDate, startDate } = this.validateDates(
-      updateOfferDto.expirationDate!,
-      updateOfferDto.startDate!,
-    );
-    updateOfferDto.expirationDate = expirationDate;
-    updateOfferDto.startDate = startDate;
-    return updateOfferDto;
-  }
-
-  async remove(offerId: string): Promise<OfferDocument | null> {
-    return this.offerModel.findByIdAndDelete(offerId);
-  }
-
-  private async validateUniqueOfferLabel(
+  private async validateUniqueLabel(
     label: string,
     offerId: Types.ObjectId | null,
   ): Promise<void> {
     const offer = await this.offerModel.findOne({
       label,
       _id: { $ne: offerId },
-      isActive: true,
+      status: Status.ACTIVE,
     });
 
     if (offer) {
@@ -166,67 +104,60 @@ export class OffersService {
   }
 
   private validateRulesOffer(dto: CreateOfferDto): void {
-    const { byProduct, byCategory, discountAmount, discountPercentage } = dto;
+    const { discountAmount, discountPercentage } = dto;
 
-    const ruleCount = [byProduct, byCategory].filter(
-      (rule) => rule !== undefined,
-    ).length;
-
-    const ruleDiscountCount = [discountAmount, discountPercentage].filter(
-      (rule) => rule !== undefined,
-    ).length;
-
-    if (ruleDiscountCount !== 1) {
+    if (!discountAmount && !discountPercentage) {
       throw new BadRequestException(
-        'Debe proporcionar un descuento por monto o por porcentaje',
+        'discountAmount or discountPercentage is required',
       );
-    }
-
-    if (ruleCount !== 1) {
-      throw new BadRequestException('Debe proporcionar una regla de oferta');
     }
   }
 
-  private validateDates(
-    expirationDate: Date,
-    startDate: Date,
-  ): { startDate: Date; expirationDate: Date } {
-    const dateCurrentLocal = new Date();
+  private updateDates(offer: OfferDocument, updateOfferDto: UpdateOfferDto) {
+    const { expirationDate, startDate } = updateOfferDto;
 
-    dateCurrentLocal.setUTCHours(0, 0, 0, 0);
-    expirationDate = setDateWithEndTime(expirationDate);
-
-    if (expirationDate < dateCurrentLocal) {
-      throw new BadRequestException(
-        'La fecha de expiración no puede ser menor a la fecha actual',
-      );
+    if (expirationDate && startDate) {
+      this.validateDates(expirationDate, startDate);
+      return;
     }
 
+    if (expirationDate) {
+      this.validateDates(expirationDate, offer.startDate);
+      return;
+    }
+
+    if (startDate) {
+      this.validateDates(offer.expirationDate, startDate);
+      return;
+    }
+  }
+
+  private validateDates(expirationDate: Date, startDate: Date) {
+    const dateCurrentLocal = new Date();
+
     if (startDate < dateCurrentLocal) {
-      throw new BadRequestException(
-        'La fecha de inicio no puede ser menor a la fecha actual',
-      );
+      throw new BadRequestException(START_DATE_INVALID);
+    }
+
+    if (expirationDate < dateCurrentLocal) {
+      throw new BadRequestException(EXPIRATION_DATE_INVALID);
     }
 
     if (startDate > expirationDate) {
-      throw new BadRequestException(
-        'La fecha de inicio no puede ser mayor a la fecha de expiración',
-      );
+      throw new BadRequestException(START_DATE_AFTER_EXPIRATION);
     }
-
-    return { startDate, expirationDate };
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  @Cron(CronExpression.EVERY_MINUTE)
   async activeOffers(): Promise<void> {
     logger.log('Active offers');
 
-    const dateCurrentLocal = new Date();
-    dateCurrentLocal.setUTCHours(0, 0, 0, 0);
+    const dateCurrent = new Date();
 
     const offers = await this.offerModel.find({
-      startDate: dateCurrentLocal,
-      isActive: false,
+      startDate: { $lte: dateCurrent },
+      expirationDate: { $gte: dateCurrent },
+      status: Status.ACTIVE,
     });
 
     const offersToUpdate: OfferDocument[] = [];
@@ -234,7 +165,7 @@ export class OffersService {
 
     for (const offer of offers) {
       try {
-        await this.validateUniqueOfferLabel(offer.label, offer._id);
+        await this.validateUniqueLabel(offer.label, offer._id);
         offersToUpdate.push(offer);
       } catch (error) {
         logger.error(error);
@@ -244,29 +175,28 @@ export class OffersService {
 
     if (offersToUpdate.length > 0) {
       await this.offerModel.updateMany(
-        { startDate: dateCurrentLocal, isActive: false },
-        { isActive: true },
+        {
+          startDate: { $lte: dateCurrent },
+          expirationDate: { $gte: dateCurrent },
+          status: Status.ACTIVE,
+        },
+        { status: Status.ACTIVE },
       );
     }
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  @Cron(CronExpression.EVERY_MINUTE)
   async deactivateOffers(): Promise<void> {
     logger.log('Deactivate offers');
 
-    const dateCurrentLocal = new Date();
-    dateCurrentLocal.setUTCHours(0, 0, 0, 0);
+    const dateCurrent = new Date();
 
-    const offers = await this.offerModel.find({
-      expirationDate: { $lte: dateCurrentLocal },
-      isActive: true,
-    });
-
-    if (offers.length > 0) {
-      await this.offerModel.updateMany(
-        { expirationDate: { $lte: dateCurrentLocal }, isActive: true },
-        { isActive: false },
-      );
-    }
+    await this.offerModel.updateMany(
+      {
+        expirationDate: { $lte: dateCurrent },
+        status: Status.ACTIVE,
+      },
+      { status: Status.INACTIVE },
+    );
   }
 }
