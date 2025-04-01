@@ -1,13 +1,6 @@
-import {
-  IsOptional,
-  IsDate,
-  IsNumber,
-  Min,
-  Max,
-  IsString,
-  IsBoolean,
-} from 'class-validator';
-import { IsNotBlank } from '../../../common/decorators';
+import { IsOptional, IsDate, IsNumber, Min, Max } from 'class-validator';
+
+import { IsNotBlank } from '@common/decorators';
 
 export class CreateOfferDto {
   @IsNotBlank({ message: 'The label cannot be empty.' })
@@ -28,21 +21,12 @@ export class CreateOfferDto {
   @IsNumber()
   discountAmount?: number;
 
-  @IsOptional()
-  @IsString()
-  byProduct?: string;
-
-  @IsOptional()
-  @IsString()
-  byCategory?: string;
+  @IsNotBlank({ message: 'The byProduct cannot be empty.' })
+  byProduct: string;
 
   @IsDate()
   startDate: Date;
 
   @IsDate()
   expirationDate: Date;
-
-  @IsBoolean()
-  @IsOptional()
-  isActive?: boolean;
 }
