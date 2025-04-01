@@ -10,6 +10,11 @@ import { FilterQuery, PaginateModel, PaginateResult } from 'mongoose';
 
 import { FilterDto } from '@common/dto';
 import { Status } from '@common/enums';
+import {
+  EXPIRATION_DATE_INVALID,
+  START_DATE_AFTER_EXPIRATION,
+  START_DATE_INVALID,
+} from '@common/constants';
 
 import { CreateCouponDto, UpdateCouponDto } from './dto';
 
@@ -17,7 +22,6 @@ import {
   COUPON_CHARACTERS_INVALID,
   COUPON_CODE_LENGTH,
   COUPON_EQUAL,
-  COUPON_EXPIRATION_DATE,
   COUPON_EXPIRED,
   COUPON_FORMAT_INVALID,
   COUPON_LABEL_EXIST,
@@ -25,8 +29,6 @@ import {
   COUPON_NOT_FOUND,
   DISCOUNT_IS_REQUIRED,
   COUPON_RULE_CHANGE_NOT_ALLOWED,
-  COUPON_START_DATE_INVALID,
-  COUPON_START_DATE_AFTER_EXPIRATION,
   COUPON_ONE_RULE_PERMITTED,
 } from './constants/coupons.constants';
 
@@ -204,15 +206,15 @@ export class CouponsService {
     const dateCurrentLocal = new Date();
 
     if (startDate < dateCurrentLocal) {
-      throw new BadRequestException(COUPON_START_DATE_INVALID);
+      throw new BadRequestException(START_DATE_INVALID);
     }
 
     if (expirationDate < dateCurrentLocal) {
-      throw new BadRequestException(COUPON_EXPIRATION_DATE);
+      throw new BadRequestException(EXPIRATION_DATE_INVALID);
     }
 
     if (startDate > expirationDate) {
-      throw new BadRequestException(COUPON_START_DATE_AFTER_EXPIRATION);
+      throw new BadRequestException(START_DATE_AFTER_EXPIRATION);
     }
   }
 
@@ -301,6 +303,8 @@ export class CouponsService {
         });
       }),
     );
+
+    await this.couponModel.updateMany(query, { status: Status.ACTIVE });
   }
 
   @Cron(CronExpression.EVERY_MINUTE)
