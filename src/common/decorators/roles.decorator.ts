@@ -7,7 +7,11 @@ export const ROLES_KEY = 'roles';
 type RolesValues = (keyof typeof Role | Role)[];
 
 export const Roles = (...roles: RolesValues): CustomDecorator<string> => {
-  return SetMetadata(ROLES_KEY, [Role.Supervisor, ...roles]);
+  const resolvedRoles = roles.map(
+    (role) => Role[role as keyof typeof Role] || role,
+  );
+
+  return SetMetadata(ROLES_KEY, [Role.Supervisor, ...resolvedRoles]);
 };
 
 export const AllRoles = (): CustomDecorator<string> =>
