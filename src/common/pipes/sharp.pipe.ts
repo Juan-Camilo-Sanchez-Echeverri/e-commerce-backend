@@ -25,7 +25,7 @@ export class SharpPipe
       await sharp(file.path).resize(800).webp({ effort: 3 }).toFile(outputPath);
       unlinkSync(file.path);
 
-      processedFiles.push(`/uploads/products/${filename}`);
+      processedFiles.push(`/resources/products/${filename}`);
     }
 
     return processedFiles;
