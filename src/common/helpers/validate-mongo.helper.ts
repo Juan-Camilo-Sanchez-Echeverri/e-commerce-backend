@@ -1,36 +1,43 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { NextFunction } from 'express';
 
-import { Types } from 'mongoose';
+import {
+  ConflictException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 
-export function validateMongo(error, doc, next: NextFunction): void {
+interface MongoError {
+  name: string;
+  code?: number;
+  keyPattern?: Record<string, number>;
+  keyValue?: Record<string, unknown>;
+  errors?: Record<string, unknown>;
+}
+
+export function validateMongo<T>(
+  error: MongoError,
+  _document: T,
+  next: NextFunction,
+): void {
   try {
     if (error.name === 'MongoServerError' && error.code === 11000) {
-      next(
-        new BadRequestException(
-          `There is already a registry with the same ${Object.keys(
-            error.keyPattern,
-          )} : ${Object.values(error.keyValue).join(', ')}`,
-        ),
-      );
+      const duplicatedKey = Object.keys(error.keyPattern ?? {})[0];
+      const duplicatedValue = error.keyValue?.[duplicatedKey] as string;
+
+      const message = `There is already a registry with the same ${duplicatedKey} : ${duplicatedValue}`;
+
+      next(new ConflictException(message));
     }
 
     if (error.name === 'ValidationError') {
       next(
-        new BadRequestException(
-          `Fields: ${Object.keys(error.errors).join(', ')} are required.`,
+        new UnprocessableEntityException(
+          `Fields: ${Object.keys(error.errors ?? {}).join(', ')} are required.`,
         ),
       );
     }
+
+    next();
   } catch (error) {
     next(error);
-  }
-}
-
-export function validateObjectId(id: string) {
-  if (!id) throw new ForbiddenException('The required id');
-
-  if (!Types.ObjectId.isValid(id)) {
-    throw new BadRequestException('The id is not valid');
   }
 }

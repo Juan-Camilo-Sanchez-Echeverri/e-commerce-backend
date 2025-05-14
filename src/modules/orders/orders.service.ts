@@ -5,18 +5,17 @@ import { FilterQuery, PaginateModel } from 'mongoose';
 
 import { CronExpression, Cron } from '@nestjs/schedule';
 
+import { SalesStatus } from '@common/enums';
+import { FilterDto } from '@common/dto';
+
 import { CreateOrderDto, QueryFilterDto } from './dto';
 
 import { Order, OrderDocument } from './schemas/order.schema';
-import { SalesStatus } from '../../common/enums/sales-status.enum';
-import { ProductsService } from '../products/products.service';
-import { FilterDto } from '../../common/dto';
 
 @Injectable()
 export class OrdersService {
   constructor(
     @InjectModel(Order.name) private readonly orderModel: PaginateModel<Order>,
-    private readonly productsService: ProductsService,
   ) {}
 
   async findOneById(id: string): Promise<OrderDocument> {
@@ -76,11 +75,7 @@ export class OrdersService {
     id: string,
     status: SalesStatus,
   ): Promise<OrderDocument | null> {
-    const order = await this.findOneById(id);
-    // if (status === SalesStatus.REJECTED || status === SalesStatus.ABANDONED) {
-    //   for (const product of order.products) {
-    //   }
-    // }
+    await this.findOneById(id);
 
     return this.orderModel.findByIdAndUpdate(
       id,

@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { FilterQuery, PaginateModel, PaginateResult } from 'mongoose';
+import { PaginateModel, PaginateResult } from 'mongoose';
 
 import { FilterDto } from '@common/dto';
 
@@ -29,11 +29,6 @@ export class StatesService {
       page,
       sort: { name: 1 },
     });
-  }
-
-  async findOneByQuery(query: FilterQuery<StateDocument>) {
-    const state = await this.stateModel.findOne(query);
-    if (state) return state;
   }
 
   async findOneById(id: string): Promise<StateDocument> {

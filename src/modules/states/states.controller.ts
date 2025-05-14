@@ -1,10 +1,8 @@
-import { Body, Controller, Get, HttpCode, Post, Query } from '@nestjs/common';
+import { Controller, Get } from '@nestjs/common';
 
 import { Public } from '@common/decorators';
-import { FilterDto } from '@common/dto';
 
 import { StatesService } from './states.service';
-import { StateDocument } from './schemas/state.schema';
 
 @Controller('states')
 @Public()

@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 
 export const fileNamer = (
-  req: Express.Request,
+  _req: Express.Request,
   file: Express.Multer.File,
   callback: (error: Error | null, filename: string) => void,
 ) => {
