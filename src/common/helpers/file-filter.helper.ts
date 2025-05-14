@@ -2,7 +2,7 @@ import { UnsupportedMediaTypeException } from '@nestjs/common';
 import { IMAGE_EXTENSIONS } from '../constants';
 
 export const fileFilter = (
-  req: Express.Request | null,
+  _req: Express.Request | null,
   file: Express.Multer.File,
   callback: (
     error: UnsupportedMediaTypeException | null,

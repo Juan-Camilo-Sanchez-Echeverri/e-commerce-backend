@@ -1,10 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+
 import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, PaginateModel, PaginateResult } from 'mongoose';
+
+import { FilterDto } from '@common/dto';
+
+import { CreateSubcategoryDto, UpdateSubcategoryDto } from './dto';
+
 import { Subcategory } from './schemas/subcategory.schema';
-import { CreateSubcategoryDto } from './dto/create-subcategory.dto';
-import { UpdateSubcategoryDto } from './dto';
-import { FilterDto } from '../../common/dto';
 
 @Injectable()
 export class SubcategoriesService {
@@ -24,7 +27,7 @@ export class SubcategoriesService {
     return this.subCategoryModel.find();
   }
 
-  async findPaginated(
+  async findPaginate(
     filterDto: FilterDto<Subcategory>,
   ): Promise<PaginateResult<Subcategory>> {
     const { page, limit, data } = filterDto;
@@ -39,9 +42,7 @@ export class SubcategoriesService {
   async findById(id: string): Promise<Subcategory> {
     const subcategory = await this.subCategoryModel.findById(id);
 
-    if (!subcategory) {
-      throw new NotFoundException('Subcategory not found');
-    }
+    if (!subcategory) throw new NotFoundException('Subcategory not found');
 
     return subcategory;
   }

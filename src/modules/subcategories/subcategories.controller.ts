@@ -6,12 +6,15 @@ import {
   Param,
   Delete,
   Put,
+  Query,
 } from '@nestjs/common';
 
 import { Roles } from '@common/decorators';
 
 import { CreateSubcategoryDto, UpdateSubcategoryDto } from './dto';
 import { SubcategoriesService } from './subcategories.service';
+import { FilterDto } from '../../common/dto';
+import { Subcategory } from './schemas/subcategory.schema';
 
 @Roles('Admin')
 @Controller('subcategories')
@@ -24,8 +27,8 @@ export class SubcategoriesController {
   }
 
   @Get()
-  async findAll() {
-    return this.subcategoriesService.findAll();
+  async findAll(@Query() filterDto: FilterDto<Subcategory>) {
+    return this.subcategoriesService.findPaginate(filterDto);
   }
 
   @Get(':id')

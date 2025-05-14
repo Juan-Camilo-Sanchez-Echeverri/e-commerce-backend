@@ -31,9 +31,11 @@ export class CitiesService {
 
   async findOneByQuery(
     query: FilterQuery<CityDocument>,
-  ): Promise<CityDocument | undefined> {
+  ): Promise<CityDocument | null> {
     const city = await this.cityModel.findOne(query);
     if (city) return await this.populateCity(city);
+
+    return null;
   }
 
   async findOneById(id: string): Promise<CityDocument> {

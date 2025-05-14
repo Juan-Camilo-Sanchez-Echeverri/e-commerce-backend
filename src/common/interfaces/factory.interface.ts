@@ -5,5 +5,5 @@ export interface Factory<T, U> {
 }
 
 export interface FactoryRegistry<T, U> {
-  register(name: U, constructor: Constructor<T>);
+  register(name: U, constructor: Constructor<T>): void;
 }

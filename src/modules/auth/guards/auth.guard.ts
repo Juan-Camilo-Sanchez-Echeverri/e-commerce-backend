@@ -74,12 +74,12 @@ export class AuthGuard implements CanActivate {
       const decode = await this.jwtService.verifyAsync<PayloadLogin>(token);
 
       return decode;
-    } catch (error) {
+    } catch (error: unknown) {
       if (error instanceof TokenExpiredError) {
         throw new UnauthorizedException('El token ha expirado');
       }
 
-      throw new BadRequestException(error.message);
+      throw new BadRequestException((error as Error).message);
     }
   }
 
@@ -108,7 +108,7 @@ export class AuthGuard implements CanActivate {
     }
   }
 
-  private assignRequestUser(user: { name }, request: Request): void {
+  private assignRequestUser(user: { name: string }, request: Request): void {
     request.user = user;
 
     if (!request.user) {
