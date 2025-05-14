@@ -15,7 +15,7 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 
 import { SharpPipe } from '@common/pipes/';
 
-import { CreateVariantDto, UpdateVariantDto, ParamsVariantDto } from '../dto';
+import { CreateVariantDto, UpdateVariantDto } from '../dto';
 import { ProductsService } from '../products.service';
 
 @Controller('products/:productId/variants')
@@ -49,17 +49,24 @@ export class VariantsController {
 
   @Patch(':variantId')
   async updateVariant(
-    @Param() params: ParamsVariantDto,
+    @Param('productId') productId: string,
+    @Param('variantId') variantId: string,
     @Body() updateVariantDto: UpdateVariantDto,
   ) {
+    const params = { productId, variantId };
     return this.productsService.updateVariant(params, updateVariantDto);
   }
 
   @Delete(':variantId')
-  async removeVariant(@Param() params: ParamsVariantDto) {
+  async removeVariant(
+    @Param('productId') productId: string,
+    @Param('variantId') variantId: string,
+  ) {
+    const params = { productId, variantId };
     const variant = await this.productsService.removeVariant(params);
 
     variant.images.forEach((image) => {
+      image = image.replace('resources', 'uploads');
       unlink(path.join(process.cwd(), image)).catch(() => {});
     });
   }
@@ -67,10 +74,12 @@ export class VariantsController {
   @Post(':variantId/upload')
   @UseInterceptors(FilesInterceptor('images', 10))
   async uploadVariantImages(
-    @Param() params: ParamsVariantDto,
+    @Param('productId') productId: string,
+    @Param('variantId') variantId: string,
     @UploadedFiles(SharpPipe) processedFilenames: string[],
   ) {
     try {
+      const params = { productId, variantId };
       return await this.productsService.addVariantImages(
         params,
         processedFilenames,
@@ -84,9 +93,9 @@ export class VariantsController {
 
   private async cleanupFiles(urls: string[]): Promise<void> {
     await Promise.all(
-      urls.map((fileUrl: string) => {
+      urls.map(async (fileUrl: string) => {
         const filePath = path.join(process.cwd(), fileUrl);
-        return unlink(filePath).catch(() => {});
+        return await unlink(filePath).catch(() => {});
       }),
     );
   }
