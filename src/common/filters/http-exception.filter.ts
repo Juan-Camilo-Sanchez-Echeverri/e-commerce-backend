@@ -22,14 +22,14 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
   constructor(private readonly logService: LogService) {}
 
-  async catch(exception: any, host: ArgumentsHost) {
+  async catch(exception: Error, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
     await this.cleanupUploadedFiles(request);
 
-    const status =
+    const status: HttpStatus =
       exception instanceof HttpException
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
@@ -45,31 +45,46 @@ export class HttpExceptionFilter implements ExceptionFilter {
       this.logger.error(exception.message, exception.stack);
     }
 
-    const messageException =
-      status === HttpStatus.INTERNAL_SERVER_ERROR
-        ? 'Internal Server Error'
-        : exception?.response?.message || exception.message;
+    const exceptionResponse =
+      exception instanceof HttpException
+        ? exception.getResponse()
+        : 'Internal server error';
+
+    const baseMessage = this.extractMessage(exceptionResponse);
+    const messageException = this.getFormattedMessage(baseMessage);
 
     return response.status(status).json({
       success: false,
       message: messageException,
-      error: exception?.response?.error || exception.name,
       data: null,
     });
   }
 
+  private extractMessage(response: unknown): string | string[] {
+    if (typeof response === 'object' && 'message' in response!) {
+      return response.message as string | string[];
+    }
+
+    return response as string;
+  }
+
+  private getFormattedMessage(message: string | string[]) {
+    return typeof message === 'string' && message.includes('ENOENT')
+      ? 'File not found'
+      : message;
+  }
+
   private async cleanupUploadedFiles(request: Request): Promise<void> {
+    const file = (request.file as Express.Multer.File) || null;
     const files = (request.files as Express.Multer.File[]) || [];
 
+    const allFiles = file ? [file] : files;
+
     await Promise.all(
-      files.map((file) => {
+      allFiles.map((file) => {
         if (file.path) {
           const fullPath = path.join(process.cwd(), file.path);
-          console.log({ fullPath });
-
-          return unlink(fullPath).catch((e) => {
-            console.log(e);
-          });
+          unlink(fullPath).catch(() => {});
         }
       }),
     );
