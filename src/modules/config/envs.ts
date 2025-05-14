@@ -3,7 +3,7 @@ import * as joi from 'joi';
 import { resolve } from 'path';
 import { ExecModes } from '@common/enums';
 
-const nodeEnv = process.env.NODE_ENV.trim() || ExecModes.LOCAL;
+const nodeEnv = (process.env.NODE_ENV.trim() as ExecModes) || ExecModes.LOCAL;
 
 const envFile = nodeEnv === ExecModes.PROD ? '.env' : `.env.${nodeEnv}`;
 
@@ -13,7 +13,7 @@ config({ path: envPath });
 
 interface EnvVars {
   PORT: number;
-  NODE_ENV: string;
+  NODE_ENV: ExecModes;
   DATABASE_URL: string;
   SLACK_WEBHOOK_URL: string;
   JWT_SECRET: string;
@@ -53,7 +53,9 @@ const envSchema = joi
   })
   .unknown(true);
 
-const { error, value } = envSchema.validate(process.env, { abortEarly: false });
+const result = envSchema.validate(process.env, { abortEarly: false });
+const error = result.error;
+const value = result.value as EnvVars;
 
 if (error) {
   const errorMessages = error.details
@@ -63,7 +65,7 @@ if (error) {
   throw new Error(`Config validation error: ${errorMessages}`);
 }
 
-const envVars: EnvVars = value as EnvVars;
+const envVars: EnvVars = value;
 
 export const envs = {
   port: envVars.PORT,
