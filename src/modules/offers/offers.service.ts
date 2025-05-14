@@ -157,34 +157,26 @@ export class OffersService {
 
     const dateCurrent = new Date();
 
-    const offers = await this.offerModel.find({
+    const filter = {
       startDate: { $lte: dateCurrent },
       expirationDate: { $gte: dateCurrent },
-      status: Status.ACTIVE,
-    });
+      status: Status.INACTIVE,
+    };
+
+    const offers = await this.offerModel.find(filter);
 
     const offersToUpdate: OfferDocument[] = [];
-    const offersNotUpdated: OfferDocument[] = [];
+    const offersNotUpdated: { offer: OfferDocument; reason: string }[] = [];
 
     for (const offer of offers) {
       try {
         await this.validateUniqueLabel(offer.label, offer._id);
+        offer.status = Status.ACTIVE;
+        await offer.save();
         offersToUpdate.push(offer);
       } catch (error) {
-        logger.error(error);
-        offersNotUpdated.push(offer);
+        offersNotUpdated.push({ offer, reason: String(error) });
       }
-    }
-
-    if (offersToUpdate.length > 0) {
-      await this.offerModel.updateMany(
-        {
-          startDate: { $lte: dateCurrent },
-          expirationDate: { $gte: dateCurrent },
-          status: Status.ACTIVE,
-        },
-        { status: Status.ACTIVE },
-      );
     }
   }
 
@@ -194,12 +186,14 @@ export class OffersService {
 
     const dateCurrent = new Date();
 
-    await this.offerModel.updateMany(
+    const deactivate = await this.offerModel.updateMany(
       {
         expirationDate: { $lte: dateCurrent },
         status: Status.ACTIVE,
       },
       { status: Status.INACTIVE },
     );
+
+    logger.log(`Offers deactivated: ${deactivate.modifiedCount}`);
   }
 }
