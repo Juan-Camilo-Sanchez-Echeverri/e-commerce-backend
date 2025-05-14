@@ -8,9 +8,12 @@ import {
   Put,
 } from '@nestjs/common';
 
+import { Roles } from '@common/decorators';
+
 import { CreateSubcategoryDto, UpdateSubcategoryDto } from './dto';
 import { SubcategoriesService } from './subcategories.service';
 
+@Roles('Admin')
 @Controller('subcategories')
 export class SubcategoriesController {
   constructor(private readonly subcategoriesService: SubcategoriesService) {}
