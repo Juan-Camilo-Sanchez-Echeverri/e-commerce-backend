@@ -46,5 +46,5 @@ export class CreateUserDto {
   @IsArray()
   roles?: Role[];
 
-  lastLogin?: Date;
+  lastLogin?: Date | null;
 }

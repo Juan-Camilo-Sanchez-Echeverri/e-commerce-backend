@@ -10,7 +10,7 @@ import {
   Query,
 } from '@nestjs/common';
 
-import { Public, AllRoles } from '@common/decorators';
+import { Public, AllRoles, User } from '@common/decorators';
 import { USER_LOGOUT_SUCCESS } from '@common/constants';
 
 import { LoginDto, RecoverPasswordDto, ResetPasswordDto } from './dto/auth.dto';
@@ -30,10 +30,11 @@ export class AuthController {
     return await this.authService.login(loginDto);
   }
 
-  @Public()
+  @AllRoles()
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  logout(): { message: string } {
+  async logout(@User() user: UserPlatform): Promise<{ message: string }> {
+    await this.authService.logout(user);
     return { message: USER_LOGOUT_SUCCESS };
   }
 
