@@ -76,7 +76,7 @@ export class FavoritesService {
     productAdd: string,
   ): void {
     for (const product of listFavorite.products) {
-      if (productAdd === String(product['_id'])) {
+      if (productAdd === String(product)) {
         throw new BadRequestException(
           `El producto ya existe en la lista de favoritos`,
         );
@@ -90,7 +90,7 @@ export class FavoritesService {
   ): void {
     let productExist = false;
     for (const productFavorite of favorite.products) {
-      if (String(productFavorite['_id']) === product) {
+      if (String(productFavorite) === product) {
         productExist = true;
         break;
       }

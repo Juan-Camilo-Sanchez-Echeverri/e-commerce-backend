@@ -116,7 +116,7 @@ export class CouponsService {
     }
 
     if (!coupon.usedBy.includes(user._id)) {
-      return await this.couponModel.findByIdAndUpdate(id, {
+      await this.couponModel.findByIdAndUpdate(id, {
         $push: { usedBy: user._id },
       });
     }
