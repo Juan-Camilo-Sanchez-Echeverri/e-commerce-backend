@@ -54,6 +54,14 @@ export class AuthService {
     return response;
   }
 
+  async logout(user: UserPlatform): Promise<void> {
+    const serviceUpdate = this.getService(user.roles);
+
+    await serviceUpdate.update(user.id, {
+      lastLogin: null,
+    });
+  }
+
   async activateAccount(
     activateDto: ActivateDto,
   ): Promise<{ active: boolean }> {
