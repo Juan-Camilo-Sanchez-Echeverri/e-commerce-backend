@@ -4,9 +4,13 @@ import {
   MongooseOptionsFactory,
 } from '@nestjs/mongoose';
 
+import { Connection, Schema } from 'mongoose';
+
 import * as paginate from 'mongoose-paginate-v2';
+import * as autopopulate from 'mongoose-autopopulate';
 import { envs } from './envs';
-import { Connection } from 'mongoose';
+
+type MongoosePlugin = (schema: Schema, options?: any) => void;
 
 @Injectable()
 export class MongooseConfigService implements MongooseOptionsFactory {
@@ -14,7 +18,7 @@ export class MongooseConfigService implements MongooseOptionsFactory {
     return {
       uri: envs.databaseUrl,
       connectionFactory: (connection: Connection) => {
-        connection.plugin(require('mongoose-autopopulate'));
+        connection.plugin(autopopulate as unknown as MongoosePlugin);
         connection.plugin(paginate);
         return connection;
       },
