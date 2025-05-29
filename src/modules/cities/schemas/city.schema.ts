@@ -1,6 +1,6 @@
 import { Schema, Prop, SchemaFactory } from '@nestjs/mongoose';
 import mongoose, { HydratedDocument } from 'mongoose';
-import { validateMongo } from '../../../common/helpers';
+import { validateMongo } from '@common/helpers/validate-mongo.helper';
 import { StateDocument } from '../../states/schemas/state.schema';
 
 @Schema({ timestamps: true })
