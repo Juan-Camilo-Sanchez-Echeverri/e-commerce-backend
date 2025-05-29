@@ -5,10 +5,11 @@ import { createLogger, format, transports } from 'winston';
 import * as SlackHook from 'winston-slack-webhook-transport';
 
 import { envs } from '../config';
+import { extractUserFromRequest } from '../../common/helpers';
 
 @Injectable()
 export class LogService {
-  sendNotificationSlack(req: Request, status: HttpStatus, except: any) {
+  sendNotificationSlack(req: Request, status: HttpStatus, except: Error) {
     const slackTransport = new SlackHook({
       webhookUrl: envs.slackWebhookUrl,
       format: format.json(),
@@ -38,8 +39,9 @@ export class LogService {
     });
 
     const logger = createLogger({ transports: [fileErrorTransport] });
+    const userId = extractUserFromRequest(req)?._id.toString() || 'anonymous';
 
-    const messageLog = `Method: ${req.method}, User ID: ${req['user']?.id}, Time: ${date.toISOString()}, Path: ${req.path}, Status: ${res.statusCode}`;
+    const messageLog = `Method: ${req.method}, User ID: ${userId}, Time: ${date.toISOString()}, Path: ${req.path}, Status: ${res.statusCode}`;
 
     logger.info(messageLog);
   }

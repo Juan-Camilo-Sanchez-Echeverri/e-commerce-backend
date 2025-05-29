@@ -4,17 +4,17 @@ import {
   MongooseOptionsFactory,
 } from '@nestjs/mongoose';
 
-import * as autoPopulate from 'mongoose-autopopulate';
 import * as paginate from 'mongoose-paginate-v2';
 import { envs } from './envs';
+import { Connection } from 'mongoose';
 
 @Injectable()
 export class MongooseConfigService implements MongooseOptionsFactory {
   createMongooseOptions(): MongooseModuleOptions {
     return {
       uri: envs.databaseUrl,
-      connectionFactory: (connection) => {
-        connection.plugin(autoPopulate);
+      connectionFactory: (connection: Connection) => {
+        connection.plugin(require('mongoose-autopopulate'));
         connection.plugin(paginate);
         return connection;
       },

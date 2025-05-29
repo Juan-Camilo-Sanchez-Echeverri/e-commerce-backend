@@ -36,7 +36,7 @@ export class EncoderService {
     return `${ivBase64}:${authTagBase64}:${encrypted}`;
   }
 
-  decryptData(encryptedData: string, secretKey: string): Promise<any> {
+  decryptData<T = unknown>(encryptedData: string, secretKey: string): T {
     const [iv, authTag, data] = encryptedData.split(':');
 
     const key = this.generatePasswordEncryptDecrypt(secretKey);
@@ -48,12 +48,12 @@ export class EncoderService {
     let decrypted = decipher.update(data, 'base64', 'utf8');
     decrypted += decipher.final('utf8');
 
-    return JSON.parse(decrypted);
+    return JSON.parse(decrypted) as T;
   }
 
   private isValidBase64(str: string): boolean {
     const base64Regex =
-      /^(?:[A-Z0-9+\/]{4})*(?:[A-Z0-9+\/]{2}==|[A-Z0-9+\/]{3}=)?$/i;
+      /^(?:[A-Z0-9+\\/]{4})*(?:[A-Z0-9+\\/]{2}==|[A-Z0-9+\\/]{3}=)?$/i;
     return base64Regex.test(str);
   }
 

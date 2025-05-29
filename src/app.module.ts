@@ -15,10 +15,6 @@ import { ResponseInterceptor } from '@common/interceptors';
 
 import { LoggerMiddleware } from '@common/middlewares';
 
-import { GatewayName } from '@modules/payments/enums';
-import { PayGateway } from '@modules/payments/factories/gateways/pay.gateway';
-import { paymentGatewayFactory } from '@modules/payments/factories/payment-gateway.factory';
-
 import { AuthModule } from '@modules/auth/auth.module';
 import { CitiesModule } from '@modules/cities/cities.module';
 import { MongooseConfigService } from '@modules/config';
@@ -29,8 +25,6 @@ import { EmailMarketingModule } from '@modules/email-marketing/email-marketing.m
 import { FavoritesModule } from '@modules/favorites/favorites.module';
 import { LogModule } from '@modules/log/log.module';
 import { OffersModule } from '@modules/offers/offers.module';
-import { OrdersModule } from '@modules/orders/orders.module';
-import { PaymentsModule } from '@modules/payments/payments.module';
 import { CategoriesModule } from '@modules/categories/categories.module';
 import { ProductsModule } from '@modules/products/products.module';
 import { RegisterModule } from '@modules/register/register.module';
@@ -62,8 +56,6 @@ import { SubcategoriesModule } from './modules/subcategories/subcategories.modul
     FavoritesModule,
     LogModule,
     OffersModule,
-    OrdersModule,
-    PaymentsModule,
     CategoriesModule,
     ProductsModule,
     RegisterModule,
@@ -85,7 +77,5 @@ import { SubcategoriesModule } from './modules/subcategories/subcategories.modul
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(LoggerMiddleware).forRoutes('{*splat}');
-    paymentGatewayFactory.register(GatewayName.ePayco, PayGateway);
-    paymentGatewayFactory.register(GatewayName.PayU, PayGateway);
   }
 }
