@@ -20,7 +20,7 @@ export const SubcategorySchema = SchemaFactory.createForClass(Subcategory);
 
 SubcategorySchema.post('save', validateMongo);
 
-SubcategorySchema.post('findOneAndDelete', async function (doc) {
+SubcategorySchema.post('findOneAndDelete', async function (doc: Subcategory) {
   // Sacar de categories.subcategories
 
   if (this.model && this.model.db) {
@@ -30,7 +30,7 @@ SubcategorySchema.post('findOneAndDelete', async function (doc) {
       {
         subcategories: { $in: [id] },
       },
-      { $pull: { subcategories: doc._id } },
+      { $pull: { subcategories: doc._id } as never },
     );
   }
 });
