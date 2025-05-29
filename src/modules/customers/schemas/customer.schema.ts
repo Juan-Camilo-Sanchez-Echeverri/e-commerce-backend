@@ -2,7 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 
 import { Role, Status } from '@common/enums';
-import { validateMongo } from '@common/helpers';
+import { validateMongo } from '@common/helpers/validate-mongo.helper';
 import { Address, AddressSchema } from '@common/schemas/address.schema';
 
 @Schema({ timestamps: true, versionKey: false })
