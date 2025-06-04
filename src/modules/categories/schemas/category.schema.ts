@@ -2,7 +2,6 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import mongoose, { Document } from 'mongoose';
 
 import { Status } from '@common/enums';
-import { validateMongo } from '@common/helpers';
 
 import { Subcategory } from '../../subcategories/schemas/subcategory.schema';
 
@@ -29,5 +28,3 @@ export class Category extends Document {
 }
 
 export const CategorySchema = SchemaFactory.createForClass(Category);
-
-CategorySchema.post('save', validateMongo);
