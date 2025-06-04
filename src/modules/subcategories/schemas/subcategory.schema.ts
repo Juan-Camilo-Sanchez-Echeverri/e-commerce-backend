@@ -2,7 +2,6 @@ import { Document } from 'mongoose';
 import { Prop, SchemaFactory, Schema } from '@nestjs/mongoose';
 
 import { Status } from '@common/enums';
-import { validateMongo } from '@common/helpers';
 
 @Schema({ timestamps: true, versionKey: false })
 export class Subcategory extends Document {
@@ -17,8 +16,6 @@ export class Subcategory extends Document {
 }
 
 export const SubcategorySchema = SchemaFactory.createForClass(Subcategory);
-
-SubcategorySchema.post('save', validateMongo);
 
 SubcategorySchema.post('findOneAndDelete', async function (doc: Subcategory) {
   // Sacar de categories.subcategories
