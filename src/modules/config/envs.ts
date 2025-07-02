@@ -29,6 +29,11 @@ interface EnvVars {
 
   USER_NOTIFICATIONS: string;
   PASSWORD_NOTIFICATIONS: string;
+
+  MERCADO_PAGO_PUBLIC_KEY: string;
+  MERCADO_PAGO_ACCESS_TOKEN: string;
+  MERCADO_PAGO_WEBHOOK_TOKEN: string;
+  MERCADO_PAGO_URL_WEBHOOK: string;
 }
 
 const envSchema = joi
@@ -50,6 +55,11 @@ const envSchema = joi
 
     USER_NOTIFICATIONS: joi.string().required(),
     PASSWORD_NOTIFICATIONS: joi.string().required(),
+
+    MERCADO_PAGO_PUBLIC_KEY: joi.string().required(),
+    MERCADO_PAGO_ACCESS_TOKEN: joi.string().required(),
+    MERCADO_PAGO_WEBHOOK_TOKEN: joi.string().required(),
+    MERCADO_PAGO_URL_WEBHOOK: joi.string().required(),
   })
   .unknown(true);
 
@@ -85,4 +95,9 @@ export const envs = {
 
   userNotifications: envVars.USER_NOTIFICATIONS,
   passwordNotifications: envVars.PASSWORD_NOTIFICATIONS,
+
+  mercadoPagoPublicKey: envVars.MERCADO_PAGO_PUBLIC_KEY,
+  mercadoPagoAccessToken: envVars.MERCADO_PAGO_ACCESS_TOKEN,
+  mercadoPagoWebhookToken: envVars.MERCADO_PAGO_WEBHOOK_TOKEN,
+  mercadoPagoUrlWebhook: envVars.MERCADO_PAGO_URL_WEBHOOK,
 };
