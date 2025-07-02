@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ScheduleModule } from '@nestjs/schedule';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
 import { HttpExceptionFilter } from '@common/filters/http-exception.filter';
 
@@ -35,10 +36,11 @@ import { StoreCustomerModule } from '@modules/customers/store-customer.module';
 import { UsersModule } from '@modules/users/users.module';
 
 import { EncoderModule } from '@modules/encoder/encoder.module';
-import { NotificationsModule } from './modules/notifications/notifications.module';
-import { EventEmitterModule } from '@nestjs/event-emitter';
-import { EmailRequestModule } from './modules/email-request/email-request.module';
-import { SubcategoriesModule } from './modules/subcategories/subcategories.module';
+import { NotificationsModule } from '@modules/notifications/notifications.module';
+import { EmailRequestModule } from '@modules/email-request/email-request.module';
+import { SubcategoriesModule } from '@modules/subcategories/subcategories.module';
+import { PaymentsModule } from '@modules/payments/payments.module';
+import { OrdersModule } from '@modules/orders/orders.module';
 
 @Module({
   imports: [
@@ -65,6 +67,8 @@ import { SubcategoriesModule } from './modules/subcategories/subcategories.modul
     NotificationsModule,
     EmailRequestModule,
     SubcategoriesModule,
+    PaymentsModule,
+    OrdersModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
