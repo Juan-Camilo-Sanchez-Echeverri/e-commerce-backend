@@ -8,11 +8,14 @@ export function IsNotBlank(validationOptions?: ValidationOptions) {
       propertyName: propertyName,
       options: validationOptions,
       validator: {
-        validate(value: any) {
+        validate(value: unknown): boolean {
           if (typeof value !== 'string') return false;
           const valueTRim = value.replace(/ /g, '');
           if (valueTRim === '') return false;
           return true;
+        },
+        defaultMessage() {
+          return `${propertyName} should not be empty and is string`;
         },
       },
     });
