@@ -3,12 +3,12 @@ import mongoose, { HydratedDocument } from 'mongoose';
 
 import { Status } from '@common/enums';
 
-@Schema({ timestamps: true })
+@Schema({ timestamps: true, versionKey: false })
 export class Offer {
   @Prop({ index: true })
   label: string;
 
-  @Prop({})
+  @Prop()
   description: string;
 
   @Prop()
@@ -25,7 +25,7 @@ export class Offer {
     ref: 'Product',
     autopopulate: { select: 'name' },
   })
-  byProduct?: string;
+  byProduct: string;
 
   @Prop({ enum: Status, default: Status.INACTIVE })
   status: Status;
