@@ -1,32 +1,38 @@
-import { IsOptional, IsDate, IsNumber, Min, Max } from 'class-validator';
+import { IsOptional, IsDate, IsNumber, Min, Max, Allow } from 'class-validator';
 
 import { IsNotBlank } from '@common/decorators';
+import { Type } from 'class-transformer';
 
 export class CreateOfferDto {
-  @IsNotBlank({ message: 'The label cannot be empty.' })
+  @IsNotBlank()
   label: string;
 
-  @IsNotBlank({ message: 'The description cannot be empty.' })
+  @IsNotBlank()
   description: string;
 
+  @Allow()
   image: string;
 
-  @IsOptional()
   @IsNumber()
+  @IsOptional()
   @Min(1)
   @Max(100)
+  @Type(() => Number)
   discountPercentage?: number;
 
   @IsOptional()
   @IsNumber()
+  @Type(() => Number)
   discountAmount?: number;
 
-  @IsNotBlank({ message: 'The byProduct cannot be empty.' })
+  @IsNotBlank()
   byProduct: string;
 
   @IsDate()
+  @Type(() => Date)
   startDate: Date;
 
   @IsDate()
+  @Type(() => Date)
   expirationDate: Date;
 }
