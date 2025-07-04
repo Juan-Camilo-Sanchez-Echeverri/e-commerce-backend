@@ -1,12 +1,13 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import mongoose, { HydratedDocument, Types } from 'mongoose';
 
-import { validateMongo } from '@common/helpers';
 import { Status } from '@common/enums';
 
+import { Category } from '@modules/categories/schemas/category.schema';
+
+import { Subcategory } from '@modules/subcategories/schemas/subcategory.schema';
+
 import { VariantDocument, VariantSchema } from './variant.schema';
-import { Category } from '../../categories/schemas/category.schema';
-import { Subcategory } from '../../subcategories/schemas/subcategory.schema';
 
 @Schema({ timestamps: true, versionKey: false })
 export class Product {
@@ -46,4 +47,4 @@ export type ProductVariant = {
 
 export type ProductDocument = HydratedDocument<Product, ProductVariant>;
 
-ProductSchema.post('save', validateMongo);
+ProductSchema.index({ name: 1, status: 1 }, { unique: true });
