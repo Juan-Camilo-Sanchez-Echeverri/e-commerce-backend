@@ -7,8 +7,6 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { unlink } from 'fs/promises';
-import * as path from 'path';
 
 import { ExecModes } from '../enums';
 import { envs } from '@modules/config';
@@ -22,12 +20,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
   constructor(private readonly logService: LogService) {}
 
-  async catch(exception: Error, host: ArgumentsHost) {
+  catch(exception: Error, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
-
-    await this.cleanupUploadedFiles(request);
 
     const status: HttpStatus =
       exception instanceof HttpException
@@ -72,21 +68,5 @@ export class HttpExceptionFilter implements ExceptionFilter {
     return typeof message === 'string' && message.includes('ENOENT')
       ? 'File not found'
       : message;
-  }
-
-  private async cleanupUploadedFiles(request: Request): Promise<void> {
-    const file = (request.file as Express.Multer.File) || null;
-    const files = (request.files as Express.Multer.File[]) || [];
-
-    const allFiles = file ? [file] : files;
-
-    await Promise.all(
-      allFiles.map((file) => {
-        if (file.path) {
-          const fullPath = path.join(process.cwd(), file.path);
-          unlink(fullPath).catch(() => {});
-        }
-      }),
-    );
   }
 }
