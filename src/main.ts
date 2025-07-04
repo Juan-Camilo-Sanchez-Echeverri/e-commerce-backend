@@ -39,10 +39,8 @@ async function bootstrap(): Promise<void> {
     new ValidationPipe({
       errorHttpStatusCode: 422,
       whitelist: true,
+      forbidNonWhitelisted: true,
       transform: true,
-      transformOptions: {
-        enableImplicitConversion: true,
-      },
     }),
   );
 
