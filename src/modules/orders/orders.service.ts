@@ -47,7 +47,8 @@ export class OrdersService {
           }
         });
 
-        const price = await this.productsService.getPrice(product);
+        const priceInOffer = await this.productsService.getPrice(product);
+        const price = priceInOffer !== null ? priceInOffer : product.price;
 
         return {
           product,
