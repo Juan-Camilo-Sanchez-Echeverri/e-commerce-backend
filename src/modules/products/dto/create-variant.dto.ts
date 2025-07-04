@@ -6,10 +6,10 @@ import { IsNotBlank } from '@common/decorators';
 import { CreateSizeStockDto } from './create-size-stock.dto';
 
 export class CreateVariantDto {
-  @IsNotBlank({ message: 'color should not be empty' })
+  @IsNotBlank()
   color: string;
 
-  @IsNotBlank({ message: 'colorCode should not be empty' })
+  @IsNotBlank()
   colorCode: string;
 
   @IsOptional()
