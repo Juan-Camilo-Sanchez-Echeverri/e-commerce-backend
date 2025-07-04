@@ -94,6 +94,7 @@ export class VariantsController {
   private async cleanupFiles(urls: string[]): Promise<void> {
     await Promise.all(
       urls.map(async (fileUrl: string) => {
+        fileUrl = fileUrl.replace('resources', 'uploads');
         const filePath = path.join(process.cwd(), fileUrl);
         return await unlink(filePath).catch(() => {});
       }),

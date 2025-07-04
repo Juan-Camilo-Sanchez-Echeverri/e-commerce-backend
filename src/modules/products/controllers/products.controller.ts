@@ -32,7 +32,7 @@ export class ProductsController {
   @Post('public')
   async findPublic(@Body() query: FilterDto<ProductDocument>) {
     query.data = { ...query.data, status: 'active' };
-    return await this.productsService.findPaginate(query);
+    return await this.productsService.findPublic(query);
   }
 
   @Public()

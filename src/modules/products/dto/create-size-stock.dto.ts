@@ -1,11 +1,15 @@
-import { IsNotEmpty, IsString, IsNumber } from 'class-validator';
+import { IsNotEmpty, IsNumber } from 'class-validator';
+
+import { Type } from 'class-transformer';
+
+import { IsNotBlank } from '@common/decorators';
 
 export class CreateSizeStockDto {
-  @IsNotEmpty()
-  @IsString()
+  @IsNotBlank()
   size: string;
 
-  @IsNotEmpty()
   @IsNumber()
+  @IsNotEmpty()
+  @Type(() => Number)
   stock: number;
 }

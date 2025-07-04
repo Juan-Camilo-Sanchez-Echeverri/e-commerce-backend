@@ -1,11 +1,7 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { InjectModel } from '@nestjs/mongoose';
-import { FilterQuery, PaginateModel } from 'mongoose';
+import { FilterQuery, PaginateModel, PopulateOptions } from 'mongoose';
 
 import { CreateProductDto, ParamsVariantDto, UpdateProductDto } from './dto';
 import { Product, ProductDocument } from './schemas/product.schema';
@@ -13,19 +9,23 @@ import { Product, ProductDocument } from './schemas/product.schema';
 import { FilterDto } from '@common/dto';
 import { Status } from '@common/enums';
 
-import {
-  PRODUCT_NOT_FOUND,
-  PRODUCT_NAME_EXIST,
-} from './constants/products.constants';
+import { OffersService } from '@modules/offers/offers.service';
 
-import { CreateVariantDto } from './dto/create-variant.dto';
-import { UpdateVariantDto } from './dto/update-variant.dto';
+import { CreateVariantDto, UpdateVariantDto } from './dto';
+
+import { PRODUCT_NOT_FOUND } from './constants/products.constants';
 
 @Injectable()
 export class ProductsService {
+  private readonly pathsPopulate: PopulateOptions[] = [
+    { path: 'categories', select: 'name', match: { status: 'active' } },
+    { path: 'subcategories', select: 'name', match: { status: 'active' } },
+  ];
+
   constructor(
     @InjectModel(Product.name)
     private readonly productModel: PaginateModel<ProductDocument>,
+    private readonly offersService: OffersService,
   ) {}
 
   async findPaginate(query: FilterDto<ProductDocument>) {
@@ -34,11 +34,29 @@ export class ProductsService {
     return await this.productModel.paginate(data, {
       limit,
       page,
-      populate: [
-        { path: 'categories', select: 'name', match: { status: 'active' } },
-        { path: 'subcategories', select: 'name', match: { status: 'active' } },
-      ],
+      populate: this.pathsPopulate,
     });
+  }
+
+  async findPublic(query: FilterDto<ProductDocument>) {
+    const { data, limit, page } = query;
+
+    const products = await this.productModel.paginate(data, {
+      limit,
+      page,
+      populate: this.pathsPopulate,
+    });
+
+    const formattedProducts = products.docs.map(async (product) => {
+      const priceInOffer = await this.getPrice(product);
+
+      return { ...product.toObject(), priceInOffer };
+    });
+
+    return {
+      ...products,
+      docs: await Promise.all(formattedProducts),
+    };
   }
 
   async findOneByQuery(query: FilterQuery<ProductDocument> = {}) {
@@ -60,24 +78,15 @@ export class ProductsService {
   }
 
   async create(createProductDto: CreateProductDto): Promise<ProductDocument> {
-    const { name } = createProductDto;
-    await this.validateNameExist(name, null);
-
     const product = await this.productModel.create(createProductDto);
 
     return await this.populateDoc(product);
   }
 
   async update(id: string, updateProductDto: UpdateProductDto) {
-    const productExist = await this.findById(id);
     let updateQuery = {};
-    const { name, categories, status, subcategories } = updateProductDto;
 
-    if (name) await this.validateNameExist(name, id);
-
-    if (status !== undefined) {
-      await this.validateNameExist(productExist.name, id);
-    }
+    const { categories, subcategories } = updateProductDto;
 
     if (categories !== undefined && categories.length === 0) {
       updateQuery = { $unset: { categories: 1 }, ...updateProductDto };
@@ -105,7 +114,6 @@ export class ProductsService {
   }
 
   // Métodos para variantes
-
   getVariant(product: ProductDocument, variantId: string) {
     const variant = product.variants.id(variantId);
 
@@ -167,32 +175,56 @@ export class ProductsService {
 
     if (!product) throw new NotFoundException(PRODUCT_NOT_FOUND);
 
-    const variant = this.getVariant(product, variantId);
+    return this.getVariant(product, variantId);
+  }
 
-    return variant;
+  async updateStock(
+    productId: string,
+    variantId: string,
+    size: string,
+    qty: number,
+  ): Promise<void> {
+    const res = await this.productModel.updateOne(
+      { _id: productId, 'variants._id': variantId },
+      {
+        $inc: {
+          'variants.$.sizesStock.$[elem].stock': qty,
+        },
+      },
+      { arrayFilters: [{ 'elem.size': size }] },
+    );
+
+    if (res.modifiedCount === 0) {
+      throw new NotFoundException(PRODUCT_NOT_FOUND);
+    }
+  }
+
+  async getPrice(product: ProductDocument): Promise<number | null> {
+    const offer = await this.offersService.findOneByQuery({
+      status: 'active',
+      byProduct: product,
+    });
+
+    let price = product.price;
+
+    if (!offer) return null;
+
+    if (offer.discountPercentage) {
+      price *= 1 - offer.discountPercentage / 100;
+    }
+
+    if (offer.discountAmount) {
+      price = Math.max(0, price - offer.discountAmount);
+    }
+
+    return price;
   }
 
   /**
    * * PRIVATE METHODS
    */
 
-  private async validateNameExist(
-    name: string,
-    productId: string | null,
-  ): Promise<void> {
-    const product = await this.productModel.findOne({
-      name,
-      _id: { $ne: productId },
-      status: 'active',
-    });
-
-    if (product) throw new BadRequestException(PRODUCT_NAME_EXIST);
-  }
-
   private async populateDoc(product: ProductDocument) {
-    return await product.populate([
-      { path: 'categories', select: 'name', match: { status: 'active' } },
-      { path: 'subcategories', select: 'name', match: { status: 'active' } },
-    ]);
+    return await product.populate(this.pathsPopulate);
   }
 }
