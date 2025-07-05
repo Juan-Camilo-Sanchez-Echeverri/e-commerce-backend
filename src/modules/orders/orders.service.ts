@@ -8,12 +8,34 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { PaymentResponse } from 'mercadopago/dist/clients/payment/commonTypes';
 
 import { ProductsService } from '@modules/products/products.service';
+import { ProductDocument } from '@modules/products/schemas/product.schema';
+import { VariantDocument } from '@modules/products/schemas/variant.schema';
+
 import { PaymentsService } from '@modules/payments/payments.service';
 
+import { CouponsService } from '@modules/coupons/coupons.service';
+import { CouponDocument } from '@modules/coupons/schemas/coupon.schema';
+
 import { CreateOrderDto, UpdateOrderDto } from './dto';
+import { OrderItemDto } from './dto/order-item.dto';
 
 import { Order, OrderDocument } from './schemas/order.schema';
 import { OrderStatus } from './schemas';
+
+interface ProcessedOrderItem {
+  product: ProductDocument;
+  variant: VariantDocument;
+  price: number;
+  quantity: number;
+  size: string;
+}
+
+interface PaymentItem {
+  id: string;
+  title: string;
+  quantity: number;
+  unit_price: number;
+}
 
 @Injectable()
 export class OrdersService {
@@ -23,69 +45,126 @@ export class OrdersService {
 
     private readonly productsService: ProductsService,
     private readonly paymentsService: PaymentsService,
+    private readonly couponsService: CouponsService,
   ) {}
 
   async create(createOrderDto: CreateOrderDto): Promise<OrderDocument> {
-    const items = await Promise.all(
-      createOrderDto.items.map(async (item) => {
+    const coupon = await this.findCouponIfExists(createOrderDto.coupon);
+    const items = await this.processOrderItems(createOrderDto.items);
+    const total = this.calculateItemsTotal(items);
+    const finalTotal = this.applyDiscount(coupon, total);
+
+    const orderNew = await this.orderModel.create({
+      ...createOrderDto,
+      coupon,
+      items,
+      total: finalTotal,
+      status: 'PENDING',
+    });
+
+    await this.setupPayment(orderNew, items);
+    await this.updateCouponUsage(coupon, orderNew.email);
+
+    return this.populateOrder(orderNew);
+  }
+
+  private async findCouponIfExists(
+    couponCode?: string,
+  ): Promise<CouponDocument | null> {
+    return couponCode
+      ? await this.couponsService.findOneByQuery({ code: couponCode })
+      : null;
+  }
+
+  private async processOrderItems(
+    orderItems: OrderItemDto[],
+  ): Promise<ProcessedOrderItem[]> {
+    return Promise.all(
+      orderItems.map(async (item) => {
         const product = await this.productsService.findById(item.productId);
         const variant = this.productsService.getVariant(
           product,
           item.variantId,
         );
 
-        variant.sizesStock.forEach((sizeStock) => {
-          if (sizeStock.size !== item.size) {
-            throw new NotFoundException(
-              `Size ${item.size} not found for product ${product.name}`,
-            );
-          }
-          if (sizeStock.stock < item.quantity) {
-            throw new NotFoundException(
-              `Not enough stock for product ${product.name}, size ${item.size}`,
-            );
-          }
-        });
+        this.validateStockAvailability(product, variant, item);
 
         const priceInOffer = await this.productsService.getPrice(product);
-        const price = priceInOffer !== null ? priceInOffer : product.price;
+        const basePrice = priceInOffer !== null ? priceInOffer : product.price;
 
         return {
           product,
           variant,
-          price,
+          price: basePrice,
           quantity: item.quantity,
           size: item.size,
         };
       }),
     );
+  }
 
-    const total = items.reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0,
-    );
+  private validateStockAvailability(
+    product: ProductDocument,
+    variant: VariantDocument,
+    item: OrderItemDto,
+  ): void {
+    variant.sizesStock.forEach((sizeStock) => {
+      if (sizeStock.size !== item.size) {
+        throw new NotFoundException(
+          `Size ${item.size} not found for product ${product.name}`,
+        );
+      }
 
-    const orderNew = await this.orderModel.create({
-      ...createOrderDto,
-      items,
-      total,
-      status: 'PENDING',
+      if (sizeStock.stock < item.quantity) {
+        throw new NotFoundException(
+          `Not enough stock for product ${product.name}, size ${item.size}`,
+        );
+      }
     });
+  }
+
+  private calculateItemsTotal(items: ProcessedOrderItem[]): number {
+    return items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  }
+
+  private applyDiscount(coupon: CouponDocument | null, total: number): number {
+    if (!coupon) return total;
+
+    if (coupon.byMinAmount) {
+      this.couponsService.validateMinimumAmount(coupon, total);
+    }
+
+    return this.couponsService.calculateDiscountedPrice(coupon, total);
+  }
+
+  private async setupPayment(
+    order: OrderDocument,
+    items: ProcessedOrderItem[],
+  ): Promise<void> {
+    const paymentItems: PaymentItem[] = items.map((item) => ({
+      id: item.product._id.toString(),
+      title: item.product.name,
+      quantity: item.quantity,
+      unit_price: item.price,
+    }));
 
     const paymentUrl = await this.paymentsService.create(
-      items.map((item) => ({
-        id: item.product._id.toString(),
-        title: item.product.name,
-        quantity: item.quantity,
-        unit_price: item.price,
-      })),
-      orderNew._id.toString(),
+      paymentItems,
+      order._id.toString(),
     );
 
-    orderNew.paymentUrl = paymentUrl;
-    await orderNew.save();
+    order.paymentUrl = paymentUrl;
+    await order.save();
+  }
 
-    return this.populateOrder(orderNew);
+  private async updateCouponUsage(
+    coupon: CouponDocument | null,
+    email: string,
+  ): Promise<void> {
+    if (coupon) {
+      coupon.usedBy.push(email);
+      await coupon.save();
+    }
   }
 
   async findAll(): Promise<OrderDocument[]> {

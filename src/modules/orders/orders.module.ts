@@ -8,12 +8,14 @@ import { OrdersService } from './orders.service';
 
 import { Order, OrderSchema } from './schemas/order.schema';
 import { PaymentsModule } from '../payments/payments.module';
+import { CouponsModule } from '../coupons/coupons.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Order.name, schema: OrderSchema }]),
     ProductsModule,
     PaymentsModule,
+    CouponsModule,
   ],
   controllers: [OrdersController],
   providers: [OrdersService],

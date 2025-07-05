@@ -11,9 +11,10 @@ import {
 } from 'class-validator';
 
 import { IsNotBlank } from '@common/decorators';
+import { Type } from 'class-transformer';
 
 export class CreateCouponDto {
-  @IsNotBlank({ message: 'The label cannot be empty.' })
+  @IsNotBlank()
   label: string;
 
   @IsOptional()
@@ -44,8 +45,10 @@ export class CreateCouponDto {
   usedBy?: string[];
 
   @IsDate()
+  @Type(() => Date)
   startDate: Date;
 
   @IsDate()
+  @Type(() => Date)
   expirationDate: Date;
 }

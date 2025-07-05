@@ -22,10 +22,8 @@ import {
   COUPON_CHARACTERS_INVALID,
   COUPON_CODE_LENGTH,
   COUPON_EQUAL,
-  COUPON_EXPIRED,
   COUPON_FORMAT_INVALID,
   COUPON_LABEL_EXIST,
-  COUPON_NOT_AVAILABLE,
   COUPON_NOT_FOUND,
   DISCOUNT_IS_REQUIRED,
   COUPON_RULE_CHANGE_NOT_ALLOWED,
@@ -33,7 +31,6 @@ import {
 } from './constants/coupons.constants';
 
 import { Coupon, CouponDocument } from './schemas/coupon.schema';
-import { StoreCustomerDocument } from '../customers/schemas/customer.schema';
 
 @Injectable()
 export class CouponsService {
@@ -107,22 +104,23 @@ export class CouponsService {
     return couponDelete!;
   }
 
-  async updateUsedCoupon(id: string, user: StoreCustomerDocument) {
-    const coupon = await this.findOneById(id);
-    const dateCurrentLocal = new Date();
-
-    if (coupon.expirationDate < dateCurrentLocal) {
-      throw new BadRequestException(COUPON_EXPIRED);
+  calculateDiscountedPrice(coupon: CouponDocument, price: number): number {
+    if (coupon.discountPercentage) {
+      return price * (1 - coupon.discountPercentage / 100);
     }
 
-    if (!coupon.usedBy.includes(user._id)) {
-      await this.couponModel.findByIdAndUpdate(id, {
-        $push: { usedBy: user._id },
-      });
+    if (coupon.discountAmount) {
+      return Math.max(0, price - coupon.discountAmount);
     }
 
-    if (coupon.usedBy.includes(user._id)) {
-      throw new BadRequestException(COUPON_NOT_AVAILABLE);
+    return price;
+  }
+
+  validateMinimumAmount(coupon: CouponDocument, orderTotal: number): void {
+    if (coupon.byMinAmount && orderTotal < coupon.byMinAmount) {
+      throw new BadRequestException(
+        `Coupon ${coupon.code} requires a minimum purchase of $${coupon.byMinAmount}.`,
+      );
     }
   }
 
