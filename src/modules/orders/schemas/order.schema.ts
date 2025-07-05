@@ -1,5 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument } from 'mongoose';
+import mongoose, { HydratedDocument } from 'mongoose';
+
+import { Coupon } from '@modules/coupons/schemas/coupon.schema';
 
 import { OrderStatus } from '../enums/order-status.enum';
 
@@ -29,6 +31,14 @@ export class Order {
 
   @Prop()
   paymentUrl: string;
+
+  @Prop({
+    type: mongoose.Schema.Types.ObjectId,
+    ref: Coupon.name,
+    default: null,
+    autopopulate: { select: 'label code' },
+  })
+  coupon: Coupon | null;
 
   @Prop()
   notes: string;

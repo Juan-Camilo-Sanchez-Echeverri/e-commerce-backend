@@ -5,7 +5,6 @@ import { validateMongo } from '@common/helpers/validate-mongo.helper';
 import { Status } from '@common/enums';
 
 import { ProductDocument } from '../../products/schemas/product.schema';
-import { StoreCustomerDocument } from '../../customers/schemas/customer.schema';
 
 export type PopulatedEntity<T> = Types.ObjectId | (T & { _id: Types.ObjectId });
 
@@ -36,17 +35,8 @@ export class Coupon {
   @Prop({ enum: Status, default: Status.INACTIVE })
   status: Status;
 
-  @Prop({
-    type: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'StoreCustomer',
-        autopopulate: { select: '-__v' },
-        default: [],
-      },
-    ],
-  })
-  usedBy: PopulatedEntity<StoreCustomerDocument>[];
+  @Prop()
+  usedBy: string[];
 
   @Prop({ type: Date })
   startDate: Date;

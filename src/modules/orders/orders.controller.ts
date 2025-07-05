@@ -13,6 +13,8 @@ import { Public } from '@common/decorators';
 
 import { CreateOrderDto, UpdateOrderDto } from './dto';
 
+import { ValidateCouponPipe } from './pipes/validate-coupon.pipe';
+
 import { OrdersService } from './orders.service';
 
 @Controller('orders')
@@ -21,7 +23,7 @@ export class OrdersController {
 
   @Post()
   @Public()
-  async create(@Body() createOrderDto: CreateOrderDto) {
+  async create(@Body(ValidateCouponPipe) createOrderDto: CreateOrderDto) {
     return this.ordersService.create(createOrderDto);
   }
 
