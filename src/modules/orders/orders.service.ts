@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { PaginateModel } from 'mongoose';
 
 import { OnEvent } from '@nestjs/event-emitter';
 
@@ -41,7 +41,7 @@ interface PaymentItem {
 export class OrdersService {
   constructor(
     @InjectModel(Order.name)
-    private readonly orderModel: Model<OrderDocument>,
+    private readonly orderModel: PaginateModel<OrderDocument>,
 
     private readonly productsService: ProductsService,
     private readonly paymentsService: PaymentsService,
@@ -158,12 +158,23 @@ export class OrdersService {
   }
 
   private async updateCouponUsage(
-    coupon: CouponDocument | null,
+    coupon: Order['coupon'] | null,
     email: string,
   ): Promise<void> {
     if (coupon) {
-      coupon.usedBy.push(email);
-      await coupon.save();
+      const couponId = coupon._id.toString();
+      await this.couponsService.updateCouponUsage(couponId, email);
+    }
+  }
+
+  private async removeCouponUsage(
+    coupon: Order['coupon'] | null,
+    email: string,
+  ): Promise<void> {
+    if (coupon) {
+      const couponId = coupon._id.toString();
+
+      await this.couponsService.removeCouponUsage(couponId, email);
     }
   }
 
@@ -221,8 +232,11 @@ export class OrdersService {
       return;
     }
 
+    if (order.status === OrderStatus.PAID) return;
+
     if (payload.status === 'approved') {
       order.status = OrderStatus.PAID;
+      order.paymentUrl = null;
 
       for (const item of order.items) {
         await this.productsService.updateStock(
@@ -232,11 +246,16 @@ export class OrdersService {
           -item.quantity,
         );
       }
+
+      await this.updateCouponUsage(order.coupon, order.email);
     }
 
     if (payload.status === 'in_process') order.status = OrderStatus.PROCESSING;
 
-    if (payload.status === 'rejected') order.status = OrderStatus.REJECTED;
+    if (payload.status === 'rejected') {
+      await this.removeCouponUsage(order.coupon, order.email);
+      order.status = OrderStatus.REJECTED;
+    }
 
     await order.save();
   }
