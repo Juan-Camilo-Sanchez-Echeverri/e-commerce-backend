@@ -16,6 +16,8 @@ import { PaymentsService } from '@modules/payments/payments.service';
 import { CouponsService } from '@modules/coupons/coupons.service';
 import { CouponDocument } from '@modules/coupons/schemas/coupon.schema';
 
+import { StoreCustomerService } from '@modules/store-customers/store-customer.service';
+
 import { CreateOrderDto, UpdateOrderDto } from './dto';
 import { OrderItemDto } from './dto/order-item.dto';
 
@@ -46,13 +48,22 @@ export class OrdersService {
     private readonly productsService: ProductsService,
     private readonly paymentsService: PaymentsService,
     private readonly couponsService: CouponsService,
+    private readonly storeCustomerService: StoreCustomerService,
   ) {}
 
   async create(createOrderDto: CreateOrderDto): Promise<OrderDocument> {
     const coupon = await this.findCouponIfExists(createOrderDto.coupon);
     const items = await this.processOrderItems(createOrderDto.items);
     const total = this.calculateItemsTotal(items);
-    const finalTotal = this.applyDiscount(coupon, total);
+
+    let finalTotal = this.applyDiscount(coupon, total);
+
+    const isEligibleForNewCustomerDiscount = await this.isNewCustomerOrder(
+      createOrderDto.email,
+    );
+    if (isEligibleForNewCustomerDiscount) {
+      finalTotal = this.applyNewCustomerDiscount(finalTotal);
+    }
 
     const orderNew = await this.orderModel.create({
       ...createOrderDto,
@@ -176,6 +187,24 @@ export class OrdersService {
 
       await this.couponsService.removeCouponUsage(couponId, email);
     }
+  }
+
+  private async isNewCustomerOrder(email: string): Promise<boolean> {
+    const customer = await this.storeCustomerService.findOneByQuery({ email });
+    if (!customer) return false;
+
+    const existingOrder = await this.orderModel.findOne({
+      email,
+      status: { $ne: OrderStatus.REJECTED },
+    });
+
+    return !existingOrder;
+  }
+
+  private applyNewCustomerDiscount(total: number): number {
+    const NEW_CUSTOMER_DISCOUNT_PERCENT = 20;
+    const discountMultiplier = (100 - NEW_CUSTOMER_DISCOUNT_PERCENT) / 100;
+    return total * discountMultiplier;
   }
 
   async findAll(): Promise<OrderDocument[]> {

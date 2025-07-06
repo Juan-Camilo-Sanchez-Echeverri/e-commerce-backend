@@ -15,7 +15,7 @@ import {
 
 import { Role, Status } from '@common/enums';
 
-import { StoreCustomerService } from '@modules/customers/store-customer.service';
+import { StoreCustomerService } from '@modules/store-customers/store-customer.service';
 import { UsersService } from '@modules/users/users.service';
 import { EncoderService } from '@modules/encoder/encoder.service';
 import { EmailRequestService } from '@modules/email-request/email-request.service';

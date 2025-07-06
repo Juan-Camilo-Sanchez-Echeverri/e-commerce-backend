@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { RegisterDto } from './dto/register.dto';
-import { StoreCustomerService } from '../customers/store-customer.service';
+import { StoreCustomerService } from '../store-customers/store-customer.service';
 
 @Injectable()
 export class RegisterService {
