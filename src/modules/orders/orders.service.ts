@@ -3,10 +3,6 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { PaginateModel } from 'mongoose';
 
-import { OnEvent } from '@nestjs/event-emitter';
-
-import { PaymentResponse } from 'mercadopago/dist/clients/payment/commonTypes';
-
 import { ProductsService } from '@modules/products/products.service';
 import { ProductDocument } from '@modules/products/schemas/product.schema';
 import { VariantDocument } from '@modules/products/schemas/variant.schema';
@@ -18,11 +14,9 @@ import { CouponDocument } from '@modules/coupons/schemas/coupon.schema';
 
 import { StoreCustomerService } from '@modules/store-customers/store-customer.service';
 
-import { CreateOrderDto, UpdateOrderDto } from './dto';
-import { OrderItemDto } from './dto/order-item.dto';
+import { CreateOrderDto, UpdateOrderDto, OrderItemDto } from './dto';
 
-import { Order, OrderDocument } from './schemas/order.schema';
-import { OrderStatus } from './schemas';
+import { Order, OrderDocument, OrderStatus } from './schemas';
 
 interface ProcessedOrderItem {
   product: ProductDocument;
@@ -58,11 +52,10 @@ export class OrdersService {
 
     let finalTotal = this.applyDiscount(coupon, total);
 
-    const isEligibleForNewCustomerDiscount = await this.isNewCustomerOrder(
-      createOrderDto.email,
-    );
-    if (isEligibleForNewCustomerDiscount) {
-      finalTotal = this.applyNewCustomerDiscount(finalTotal);
+    const isFirstPurchase = await this.isFirstPurchase(createOrderDto.email);
+
+    if (isFirstPurchase) {
+      finalTotal = this.applyFirstPurchaseDiscount(finalTotal);
     }
 
     const orderNew = await this.orderModel.create({
@@ -168,7 +161,7 @@ export class OrdersService {
     await order.save();
   }
 
-  private async updateCouponUsage(
+  async updateCouponUsage(
     coupon: Order['coupon'] | null,
     email: string,
   ): Promise<void> {
@@ -178,7 +171,7 @@ export class OrdersService {
     }
   }
 
-  private async removeCouponUsage(
+  async removeCouponUsage(
     coupon: Order['coupon'] | null,
     email: string,
   ): Promise<void> {
@@ -189,7 +182,7 @@ export class OrdersService {
     }
   }
 
-  private async isNewCustomerOrder(email: string): Promise<boolean> {
+  private async isFirstPurchase(email: string): Promise<boolean> {
     const customer = await this.storeCustomerService.findOneByQuery({ email });
     if (!customer) return false;
 
@@ -201,9 +194,11 @@ export class OrdersService {
     return !existingOrder;
   }
 
-  private applyNewCustomerDiscount(total: number): number {
-    const NEW_CUSTOMER_DISCOUNT_PERCENT = 20;
-    const discountMultiplier = (100 - NEW_CUSTOMER_DISCOUNT_PERCENT) / 100;
+  private applyFirstPurchaseDiscount(total: number): number {
+    const FIRST_PURCHASE_DISCOUNT_PERCENT = 20;
+
+    const discountMultiplier = (100 - FIRST_PURCHASE_DISCOUNT_PERCENT) / 100;
+
     return total * discountMultiplier;
   }
 
@@ -248,44 +243,5 @@ export class OrdersService {
 
   private populateOrder(order: OrderDocument): Promise<OrderDocument> {
     return order.populate('items.product', 'name price');
-  }
-
-  @OnEvent('payment.completed', { async: true })
-  async handlePaymentCompletedEvent(payload: PaymentResponse) {
-    const order = await this.orderModel.findOne({
-      _id: payload.external_reference,
-    });
-
-    if (!order) {
-      console.error(`Order with Id ${payload.external_reference} not found`);
-      return;
-    }
-
-    if (order.status === OrderStatus.PAID) return;
-
-    if (payload.status === 'approved') {
-      order.status = OrderStatus.PAID;
-      order.paymentUrl = null;
-
-      for (const item of order.items) {
-        await this.productsService.updateStock(
-          item.product,
-          item.variant,
-          item.size,
-          -item.quantity,
-        );
-      }
-
-      await this.updateCouponUsage(order.coupon, order.email);
-    }
-
-    if (payload.status === 'in_process') order.status = OrderStatus.PROCESSING;
-
-    if (payload.status === 'rejected') {
-      await this.removeCouponUsage(order.coupon, order.email);
-      order.status = OrderStatus.REJECTED;
-    }
-
-    await order.save();
   }
 }
