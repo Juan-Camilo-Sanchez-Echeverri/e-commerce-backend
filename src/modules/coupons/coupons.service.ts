@@ -104,6 +104,18 @@ export class CouponsService {
     return couponDelete!;
   }
 
+  async removeCouponUsage(couponId: string, email: string): Promise<void> {
+    await this.couponModel.findByIdAndUpdate(couponId, {
+      $pull: { usedBy: email },
+    });
+  }
+
+  async updateCouponUsage(couponId: string, email: string): Promise<void> {
+    await this.couponModel.findByIdAndUpdate(couponId, {
+      $addToSet: { usedBy: email },
+    });
+  }
+
   calculateDiscountedPrice(coupon: CouponDocument, price: number): number {
     if (coupon.discountPercentage) {
       return price * (1 - coupon.discountPercentage / 100);
