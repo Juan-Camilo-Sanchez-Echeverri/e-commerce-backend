@@ -9,7 +9,7 @@ import {
   EmailMarketingSchema,
 } from './schemas/email-marketing.schema';
 
-import { StoreCustomerModule } from '../customers/store-customer.module';
+import { StoreCustomerModule } from '../store-customers/store-customer.module';
 import { EmailSenderService } from './providers/email-sender.service';
 import { NotificationsModule } from '../notifications/notifications.module';
 

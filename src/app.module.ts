@@ -31,7 +31,7 @@ import { ProductsModule } from '@modules/products/products.module';
 import { RegisterModule } from '@modules/register/register.module';
 
 import { StatesModule } from '@modules/states/states.module';
-import { StoreCustomerModule } from '@modules/customers/store-customer.module';
+import { StoreCustomerModule } from '@modules/store-customers/store-customer.module';
 
 import { UsersModule } from '@modules/users/users.module';
 

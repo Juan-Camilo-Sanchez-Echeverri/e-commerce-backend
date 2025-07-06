@@ -10,7 +10,7 @@ import { Reflector } from '@nestjs/core';
 import { JwtService, TokenExpiredError } from '@nestjs/jwt';
 import { Request } from 'express';
 
-import { StoreCustomerService } from '@modules/customers/store-customer.service';
+import { StoreCustomerService } from '@modules/store-customers/store-customer.service';
 import { UsersService } from '@modules/users/users.service';
 import { IS_PUBLIC_KEY } from '@common/decorators';
 

@@ -6,7 +6,7 @@ import { PaginateModel } from 'mongoose';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob } from 'cron';
 
-import { StoreCustomerService } from '@modules/customers/store-customer.service';
+import { StoreCustomerService } from '@modules/store-customers/store-customer.service';
 import { NotificationsService } from '@modules/notifications/notifications.service';
 import { envs } from '@modules/config';
 

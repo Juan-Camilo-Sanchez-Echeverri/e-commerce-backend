@@ -10,7 +10,7 @@ import { FilterQuery, PaginateModel } from 'mongoose';
 import {
   StoreCustomer,
   StoreCustomerDocument,
-} from './schemas/customer.schema';
+} from './schemas/store-customer.schema';
 import { CreateStoreCustomerDto, UpdateStoreCustomerDto } from './dto';
 import { EncoderService } from '../encoder/encoder.service';
 import {

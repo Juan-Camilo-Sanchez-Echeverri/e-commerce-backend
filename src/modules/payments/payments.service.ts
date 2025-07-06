@@ -26,6 +26,10 @@ export class PaymentsService {
         external_reference: orderId,
         notification_url: envs.mercadoPagoUrlWebhook,
         expires: true,
+        back_urls: {
+          success: 'https://juan-camilo-sanchez-echeverri.github.io/',
+        },
+        auto_return: 'approved',
       },
       requestOptions: { timeout: 5000 },
     });
@@ -47,4 +51,13 @@ export class PaymentsService {
       await this.eventEmitter.emitAsync('payment.completed', paymentDetails);
     }
   }
+
+  // async handleWebhook(payment: { 'data.id': string; type: string }) {
+  //   if (payment.type === 'payment') {
+  //     const paymentId = payment['data.id'];
+  //     const paymentDetails = await this.payment.get({ id: paymentId });
+
+  //     await this.eventEmitter.emitAsync('payment.completed', paymentDetails);
+  //   }
+  // }
 }
