@@ -17,6 +17,9 @@ export class OrderItem {
   quantity: number;
 
   @Prop({ required: true })
+  color: string;
+
+  @Prop({ required: true })
   size: string;
 
   @Prop({ required: true })
