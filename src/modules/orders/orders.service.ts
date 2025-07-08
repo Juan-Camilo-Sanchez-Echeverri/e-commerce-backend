@@ -14,7 +14,13 @@ import { CouponDocument } from '@modules/coupons/schemas/coupon.schema';
 
 import { StoreCustomerService } from '@modules/store-customers/store-customer.service';
 
-import { CreateOrderDto, UpdateOrderDto, OrderItemDto } from './dto';
+import {
+  CreateOrderDto,
+  UpdateOrderDto,
+  OrderItemDto,
+  OfferInfo,
+  FirstPurchaseInfo,
+} from './dto';
 
 import { Order, OrderDocument, OrderStatus } from './schemas';
 
@@ -24,6 +30,7 @@ interface ProcessedOrderItem {
   price: number;
   quantity: number;
   size: string;
+  offerInfo: OfferInfo;
 }
 
 interface PaymentItem {
@@ -47,8 +54,8 @@ export class OrdersService {
 
   async create(createOrderDto: CreateOrderDto): Promise<OrderDocument> {
     const coupon = await this.findCouponIfExists(createOrderDto.coupon);
-    const items = await this.processOrderItems(createOrderDto.items);
-    const total = this.calculateItemsTotal(items);
+    const processedItems = await this.processOrderItems(createOrderDto.items);
+    const total = this.calculateItemsTotal(processedItems);
 
     let finalTotal = this.applyDiscount(coupon, total);
 
@@ -58,18 +65,32 @@ export class OrdersService {
       finalTotal = this.applyFirstPurchaseDiscount(finalTotal);
     }
 
+    const firstPurchaseDiscount: FirstPurchaseInfo = isFirstPurchase
+      ? { applied: true, discount: total - finalTotal }
+      : { applied: false };
+
+    const items = processedItems.map((item) => ({
+      product: item.product._id.toString(),
+      variant: item.variant._id.toString(),
+      quantity: item.quantity,
+      size: item.size,
+      price: item.price,
+      offerInfo: item.offerInfo,
+    }));
+
     const orderNew = await this.orderModel.create({
       ...createOrderDto,
       coupon,
       items,
       total: finalTotal,
       status: 'PENDING',
+      firstPurchaseDiscount,
     });
 
-    await this.setupPayment(orderNew, items);
+    await this.setupPayment(orderNew, processedItems);
     await this.updateCouponUsage(coupon, orderNew.email);
 
-    return this.populateOrder(orderNew);
+    return await this.populateOrder(orderNew);
   }
 
   private async findCouponIfExists(
@@ -93,8 +114,20 @@ export class OrdersService {
 
         this.validateStockAvailability(product, variant, item);
 
+        const originalPrice = product.price;
         const priceInOffer = await this.productsService.getPrice(product);
-        const basePrice = priceInOffer !== null ? priceInOffer : product.price;
+        const basePrice = priceInOffer ? priceInOffer : product.price;
+
+        let offerInfo: OfferInfo = { hasOffer: false };
+
+        if (priceInOffer) {
+          offerInfo = {
+            hasOffer: true,
+            originalPrice,
+            offerPrice: priceInOffer,
+            discount: originalPrice - priceInOffer,
+          };
+        }
 
         return {
           product,
@@ -102,6 +135,7 @@ export class OrdersService {
           price: basePrice,
           quantity: item.quantity,
           size: item.size,
+          offerInfo,
         };
       }),
     );
@@ -112,19 +146,21 @@ export class OrdersService {
     variant: VariantDocument,
     item: OrderItemDto,
   ): void {
-    variant.sizesStock.forEach((sizeStock) => {
-      if (sizeStock.size !== item.size) {
-        throw new NotFoundException(
-          `Size ${item.size} not found for product ${product.name}`,
-        );
-      }
+    const sizeStock = variant.sizesStock.find(
+      (sizeStock) => sizeStock.size === item.size,
+    );
 
-      if (sizeStock.stock < item.quantity) {
-        throw new NotFoundException(
-          `Not enough stock for product ${product.name}, size ${item.size}`,
-        );
-      }
-    });
+    if (!sizeStock) {
+      throw new NotFoundException(
+        `Size ${item.size} not found for product ${product.name}`,
+      );
+    }
+
+    if (sizeStock.stock < item.quantity) {
+      throw new NotFoundException(
+        `Not enough stock for product ${product.name}, size ${item.size}`,
+      );
+    }
   }
 
   private calculateItemsTotal(items: ProcessedOrderItem[]): number {
@@ -196,9 +232,7 @@ export class OrdersService {
 
   private applyFirstPurchaseDiscount(total: number): number {
     const FIRST_PURCHASE_DISCOUNT_PERCENT = 20;
-
     const discountMultiplier = (100 - FIRST_PURCHASE_DISCOUNT_PERCENT) / 100;
-
     return total * discountMultiplier;
   }
 

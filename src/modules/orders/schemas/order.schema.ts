@@ -40,6 +40,12 @@ export class Order {
   })
   coupon: CouponDocument | null;
 
+  @Prop({ type: Object, required: false })
+  firstPurchaseDiscount?: {
+    applied: boolean;
+    discount?: number;
+  };
+
   @Prop()
   notes: string;
 }
