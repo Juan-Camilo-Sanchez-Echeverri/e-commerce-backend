@@ -21,6 +21,14 @@ export class OrderItem {
 
   @Prop({ required: true })
   price: number;
+
+  @Prop({ type: Object, required: false })
+  offerInfo?: {
+    hasOffer: boolean;
+    originalPrice?: number;
+    offerPrice?: number;
+    discount?: number;
+  };
 }
 
 export const OrderItemSchema = SchemaFactory.createForClass(OrderItem);
