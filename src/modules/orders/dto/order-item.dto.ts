@@ -11,6 +11,9 @@ export class OrderItemDto {
   @IsNumber()
   quantity: number;
 
-  @IsNotBlank({ message: 'size is required' })
+  @IsNotBlank()
+  color: string;
+
+  @IsNotBlank()
   size: string;
 }

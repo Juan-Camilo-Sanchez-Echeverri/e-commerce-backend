@@ -30,6 +30,7 @@ interface ProcessedOrderItem {
   price: number;
   quantity: number;
   size: string;
+  color: string;
   offerInfo: OfferInfo;
 }
 
@@ -76,6 +77,7 @@ export class OrdersService {
       size: item.size,
       price: item.price,
       offerInfo: item.offerInfo,
+      color: item.color,
     }));
 
     const orderNew = await this.orderModel.create({
@@ -114,6 +116,12 @@ export class OrdersService {
 
         this.validateStockAvailability(product, variant, item);
 
+        if (variant.color !== item.color) {
+          throw new NotFoundException(
+            `Color ${item.color} not found for product ${product.name}, size ${item.size}`,
+          );
+        }
+
         const originalPrice = product.price;
         const priceInOffer = await this.productsService.getPrice(product);
         const basePrice = priceInOffer ? priceInOffer : product.price;
@@ -135,6 +143,7 @@ export class OrdersService {
           price: basePrice,
           quantity: item.quantity,
           size: item.size,
+          color: item.color,
           offerInfo,
         };
       }),
