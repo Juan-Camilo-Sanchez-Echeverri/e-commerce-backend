@@ -12,7 +12,7 @@ import { ErrorsResponse } from '../responses/errors.response';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
-  catch(exception: Error, host: ArgumentsHost) {
+  catch(exception: Error | HttpException, host: ArgumentsHost): Response {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
 
