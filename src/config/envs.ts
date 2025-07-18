@@ -1,5 +1,5 @@
 import { config } from 'dotenv';
-import * as joi from 'joi';
+import joi from 'joi';
 import { resolve } from 'path';
 
 import { ExecModes } from '@common/enums';
@@ -25,6 +25,8 @@ interface EnvVars {
 
   NOTIFICATION_EMAIL: string;
   PASSWORD_EMAIL: string;
+
+  ALLOWED_ORIGINS: string[];
 
   REDIS_HOST: string;
   REDIS_PORT: number;
@@ -53,6 +55,8 @@ export const envSchema = joi
     NOTIFICATION_EMAIL: joi.string().email().required(),
     PASSWORD_EMAIL: joi.string().required(),
 
+    ALLOWED_ORIGINS: joi.array().items(joi.string().uri()).required(),
+
     REDIS_HOST: joi.string().required(),
     REDIS_PORT: joi.number().required(),
     REDIS_PASSWORD: joi.string().required(),
@@ -65,10 +69,10 @@ export const envSchema = joi
   })
   .unknown(true);
 
-const result = envSchema.validate(process.env, {
-  abortEarly: false,
-  allowUnknown: false,
-});
+const result = envSchema.validate(
+  { ...process.env, ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS?.split(',') },
+  { abortEarly: false, allowUnknown: false },
+);
 
 const error = result.error;
 const value = result.value as EnvVars;
@@ -90,6 +94,8 @@ export const envs = {
 
   notificationEmail: envVars.NOTIFICATION_EMAIL,
   passwordEmail: envVars.PASSWORD_EMAIL,
+
+  allowedOrigins: envVars.ALLOWED_ORIGINS,
 
   redisHost: envVars.REDIS_HOST,
   redisPort: envVars.REDIS_PORT,
