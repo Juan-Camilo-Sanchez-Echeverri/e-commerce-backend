@@ -21,7 +21,7 @@ import { HttpExceptionFilter } from '@common/filters';
   providers: [{ provide: APP_FILTER, useClass: HttpExceptionFilter }],
 })
 export class AppModule implements NestModule {
-  configure(consumer: MiddlewareConsumer) {
+  configure(consumer: MiddlewareConsumer): void {
     consumer
       .apply(AsyncLocalStorageMiddleware)
       .forRoutes({ path: '{*splat}', method: RequestMethod.GET });
