@@ -14,7 +14,7 @@ export const asyncLocalStorage = new AsyncLocalStorage<
 >();
 
 export class AsyncLocalStorageMiddleware implements NestMiddleware {
-  use(req: Request, _res: Response, next: NextFunction) {
+  use(req: Request, _res: Response, next: NextFunction): void {
     asyncLocalStorage.run(new Map(), () => {
       const store = asyncLocalStorage.getStore();
       const reqHash = createHash('sha256')
@@ -27,7 +27,7 @@ export class AsyncLocalStorageMiddleware implements NestMiddleware {
     });
   }
 
-  static getStore() {
+  static getStore(): Map<keyof typeof AsyncStorageKeys, string> | undefined {
     return asyncLocalStorage.getStore();
   }
 }

@@ -13,7 +13,7 @@ const getValidationErrorsRecursively = (
   validationErrors: ValidationError[],
   errors: { property: string; errors: string[] }[],
   parentProperty = '',
-) => {
+): void => {
   for (const error of validationErrors) {
     const propertyPath = parentProperty
       ? `${parentProperty}.${error.property}`
