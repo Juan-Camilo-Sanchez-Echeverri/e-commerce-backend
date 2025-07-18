@@ -14,7 +14,7 @@ import helmet from 'helmet';
 
 import { AppModule } from './app.module';
 
-import { envs, corsConfig } from '@config/index';
+import { envs, corsConfig, setupSwagger } from '@config/index';
 
 import { getClassValidatorErrors } from '@common/helpers';
 
@@ -83,6 +83,8 @@ async function bootstrap(): Promise<void> {
     prefix: 'v',
     defaultVersion: '1.0',
   });
+
+  setupSwagger(app);
 
   await app.listen(envs.port);
   logger.log(`Server running on ${await app.getUrl()} 🚀 in ${envs.nodeEnv}`);
