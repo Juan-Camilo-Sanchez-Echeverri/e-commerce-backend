@@ -1,9 +1,10 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ScheduleModule } from '@nestjs/schedule';
-import { EventEmitterModule } from '@nestjs/event-emitter';
+import { CommonModule } from './common/common.module';
 
 import { HttpExceptionFilter } from '@common/filters/http-exception.filter';
 
@@ -23,10 +24,10 @@ import { CouponsModule } from '@modules/coupons/coupons.module';
 
 import { EmailMarketingModule } from '@modules/email-marketing/email-marketing.module';
 
+import { CategoriesModule } from '@modules/categories/categories.module';
 import { FavoritesModule } from '@modules/favorites/favorites.module';
 import { LogModule } from '@modules/log/log.module';
 import { OffersModule } from '@modules/offers/offers.module';
-import { CategoriesModule } from '@modules/categories/categories.module';
 import { ProductsModule } from '@modules/products/products.module';
 import { RegisterModule } from '@modules/register/register.module';
 
@@ -35,12 +36,12 @@ import { StoreCustomerModule } from '@modules/store-customers/store-customer.mod
 
 import { UsersModule } from '@modules/users/users.module';
 
+import { EmailRequestModule } from '@modules/email-request/email-request.module';
 import { EncoderModule } from '@modules/encoder/encoder.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
-import { EmailRequestModule } from '@modules/email-request/email-request.module';
-import { SubcategoriesModule } from '@modules/subcategories/subcategories.module';
-import { PaymentsModule } from '@modules/payments/payments.module';
 import { OrdersModule } from '@modules/orders/orders.module';
+import { PaymentsModule } from '@modules/payments/payments.module';
+import { SubcategoriesModule } from '@modules/subcategories/subcategories.module';
 
 @Module({
   imports: [
@@ -50,6 +51,8 @@ import { OrdersModule } from '@modules/orders/orders.module';
     }),
     ScheduleModule.forRoot(),
     EventEmitterModule.forRoot(),
+    CommonModule,
+
     AuthModule,
     CitiesModule,
     CouponsModule,
