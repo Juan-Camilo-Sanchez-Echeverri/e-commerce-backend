@@ -3,15 +3,19 @@ import { OnEvent } from '@nestjs/event-emitter';
 
 import { PaymentResponse } from 'mercadopago/dist/clients/payment/commonTypes';
 
+import { NotificationsService } from '@modules/notifications/notifications.service';
+import { orderApproved } from '@modules/notifications/templates/email/order-approved';
 import { ProductsService } from '@modules/products/products.service';
-import { OrderStatus } from '../schemas';
+
 import { OrdersService } from '../orders.service';
+import { OrderStatus } from '../schemas';
 
 @Injectable()
 export class OrdersEvents {
   constructor(
     private readonly ordersService: OrdersService,
     private readonly productsService: ProductsService,
+    private readonly notificationsService: NotificationsService,
   ) {}
   @OnEvent('payment.completed', { async: true })
   async handlePaymentCompletedEvent(payload: PaymentResponse) {
@@ -25,7 +29,7 @@ export class OrdersEvents {
 
       for (const item of order.items) {
         await this.productsService.updateStock(
-          item.product,
+          item.product._id.toString(),
           item.variant,
           item.size,
           -item.quantity,
@@ -33,6 +37,12 @@ export class OrdersEvents {
       }
 
       await this.ordersService.updateCouponUsage(order.coupon, order.email);
+
+      await this.notificationsService.sendEmail({
+        to: order.email,
+        subject: '¡Tu pedido ha sido aprobado!',
+        htmlContent: orderApproved(order),
+      });
     }
 
     if (payload.status === 'in_process') order.status = OrderStatus.PROCESSING;

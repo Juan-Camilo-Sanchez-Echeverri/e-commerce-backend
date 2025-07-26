@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import mongoose from 'mongoose';
+import { ProductDocument } from '../../products/schemas/product.schema';
 
 @Schema({ _id: false })
 export class OrderItem {
@@ -8,7 +9,7 @@ export class OrderItem {
     ref: 'Product',
     required: true,
   })
-  product: string;
+  product: ProductDocument;
 
   @Prop({ type: mongoose.Schema.Types.ObjectId, required: true })
   variant: string;

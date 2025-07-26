@@ -48,6 +48,9 @@ export class Order {
 
   @Prop()
   notes: string;
+
+  @Prop({ type: String, unique: true, required: true })
+  trackingCode: string;
 }
 
 export type OrderDocument = HydratedDocument<Order>;

@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { randomBytes } from 'crypto';
 
 import { InjectModel } from '@nestjs/mongoose';
 import { PaginateModel } from 'mongoose';
@@ -80,6 +81,8 @@ export class OrdersService {
       color: item.color,
     }));
 
+    const trackingCode = randomBytes(6).toString('hex').toUpperCase();
+
     const orderNew = await this.orderModel.create({
       ...createOrderDto,
       coupon,
@@ -87,6 +90,7 @@ export class OrdersService {
       total: finalTotal,
       status: 'PENDING',
       firstPurchaseDiscount,
+      trackingCode,
     });
 
     await this.setupPayment(orderNew, processedItems);
