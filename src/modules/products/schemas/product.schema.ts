@@ -1,16 +1,14 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import mongoose, { HydratedDocument, Types } from 'mongoose';
 
+import { validateMongo } from '@common/helpers/mongo.helpers';
 import { Status } from '@common/enums';
-
-import { Category } from '@modules/categories/schemas/category.schema';
-
-import { Subcategory } from '@modules/subcategories/schemas/subcategory.schema';
+import { BaseSchema } from '@common/database';
 
 import { VariantDocument, VariantSchema } from './variant.schema';
 
 @Schema({ timestamps: true, versionKey: false })
-export class Product {
+export class Product extends BaseSchema {
   @Prop({ required: true })
   name: string;
 
@@ -27,24 +25,22 @@ export class Product {
     type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Category' }],
     default: [],
   })
-  categories: Category[];
+  categories: Types.ObjectId[];
 
   @Prop({
     type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Subcategory' }],
     default: [],
   })
-  subcategories: Subcategory[];
+  subcategories: Types.ObjectId[];
 
   @Prop([VariantSchema])
-  variants: VariantDocument[];
+  variants: Types.DocumentArray<VariantDocument>;
 }
 
 export const ProductSchema = SchemaFactory.createForClass(Product);
 
-export type ProductVariant = {
-  variants: Types.DocumentArray<VariantDocument>;
-};
+export type ProductDocument = HydratedDocument<Product>;
 
-export type ProductDocument = HydratedDocument<Product, ProductVariant>;
+ProductSchema.post('save', validateMongo);
 
 ProductSchema.index({ name: 1, status: 1 }, { unique: true });

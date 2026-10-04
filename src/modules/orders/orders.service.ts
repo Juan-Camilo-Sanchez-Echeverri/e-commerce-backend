@@ -1,8 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 
-import { InjectModel } from '@nestjs/mongoose';
-import { PaginateModel } from 'mongoose';
+import { toEntity } from '@common/database';
 
 import { ProductsService } from '@modules/products/products.service';
 import { ProductDocument } from '@modules/products/schemas/product.schema';
@@ -23,7 +22,8 @@ import {
   FirstPurchaseInfo,
 } from './dto';
 
-import { Order, OrderDocument, OrderStatus } from './schemas';
+import { OrdersRepository } from './repositories/orders.repository';
+import { Order, OrderDocument, OrderItem, OrderStatus } from './schemas';
 
 interface ProcessedOrderItem {
   product: ProductDocument;
@@ -45,8 +45,7 @@ interface PaymentItem {
 @Injectable()
 export class OrdersService {
   constructor(
-    @InjectModel(Order.name)
-    private readonly orderModel: PaginateModel<OrderDocument>,
+    private readonly ordersRepository: OrdersRepository,
 
     private readonly productsService: ProductsService,
     private readonly paymentsService: PaymentsService,
@@ -71,8 +70,8 @@ export class OrdersService {
       ? { applied: true, discount: total - finalTotal }
       : { applied: false };
 
-    const items = processedItems.map((item) => ({
-      product: item.product._id.toString(),
+    const items: OrderItem[] = processedItems.map((item) => ({
+      product: item.product._id as unknown as ProductDocument,
       variant: item.variant._id.toString(),
       quantity: item.quantity,
       size: item.size,
@@ -83,15 +82,17 @@ export class OrdersService {
 
     const trackingCode = randomBytes(6).toString('hex').toUpperCase();
 
-    const orderNew = await this.orderModel.create({
-      ...createOrderDto,
-      coupon,
-      items,
-      total: finalTotal,
-      status: 'PENDING',
-      firstPurchaseDiscount,
-      trackingCode,
-    });
+    const orderNew = await this.ordersRepository.create(
+      toEntity<Order>({
+        ...createOrderDto,
+        coupon,
+        items,
+        total: finalTotal,
+        status: OrderStatus.PENDING,
+        firstPurchaseDiscount,
+        trackingCode,
+      }),
+    );
 
     await this.setupPayment(orderNew, processedItems);
     await this.updateCouponUsage(coupon, orderNew.email);
@@ -235,7 +236,7 @@ export class OrdersService {
     const customer = await this.storeCustomerService.findOneByQuery({ email });
     if (!customer) return false;
 
-    const existingOrder = await this.orderModel.findOne({
+    const existingOrder = await this.ordersRepository.findOne({
       email,
       status: { $ne: OrderStatus.REJECTED },
     });
@@ -250,11 +251,13 @@ export class OrdersService {
   }
 
   async findAll(): Promise<OrderDocument[]> {
-    return this.orderModel.find().populate('items.product', 'name').exec();
+    return await this.ordersRepository.find({}, undefined, {
+      populate: [{ path: 'items.product', select: 'name' }],
+    });
   }
 
   async findOne(id: string): Promise<OrderDocument> {
-    const order = await this.orderModel.findById(id);
+    const order = await this.ordersRepository.findOneById(id);
 
     if (!order) throw new NotFoundException(`Order not found`);
 
@@ -262,17 +265,18 @@ export class OrdersService {
   }
 
   async findByEmail(email: string): Promise<OrderDocument[]> {
-    return this.orderModel.find({ email }).populate('items.product').exec();
+    return await this.ordersRepository.find({ email }, undefined, {
+      populate: [{ path: 'items.product' }],
+    });
   }
 
   async update(
     id: string,
     updateOrderDto: UpdateOrderDto,
   ): Promise<OrderDocument> {
-    const orderUpdate = await this.orderModel.findByIdAndUpdate(
+    const orderUpdate = await this.ordersRepository.findByIdAndUpdate(
       id,
       updateOrderDto,
-      { new: true },
     );
 
     if (!orderUpdate) throw new NotFoundException(`Order not found`);
@@ -281,7 +285,7 @@ export class OrdersService {
   }
 
   async remove(id: string): Promise<OrderDocument> {
-    const order = await this.orderModel.findByIdAndDelete(id);
+    const order = await this.ordersRepository.findByIdAndDelete(id);
 
     if (!order) throw new NotFoundException(`Order not found`);
 

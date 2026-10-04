@@ -1,7 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import mongoose from 'mongoose';
-import { State } from '@modules/states/schemas/state.schema';
-import { City } from '@modules/cities/schemas/city.schema';
+import mongoose, { Types } from 'mongoose';
 
 @Schema({ _id: false })
 export class ShippingAddress {
@@ -11,7 +9,7 @@ export class ShippingAddress {
     required: true,
     autopopulate: { select: 'name' },
   })
-  state: State;
+  state: Types.ObjectId;
 
   @Prop({
     type: mongoose.Schema.Types.ObjectId,
@@ -19,7 +17,7 @@ export class ShippingAddress {
     required: true,
     autopopulate: { select: 'name' },
   })
-  city: City;
+  city: Types.ObjectId;
 
   @Prop({ required: true })
   address: string;

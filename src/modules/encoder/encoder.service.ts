@@ -6,22 +6,21 @@ import {
   createHash,
 } from 'crypto';
 import { INVALID_BASE64 } from './constants';
-import { genSalt, hash, compare } from 'bcrypt';
+import { bcryptAdapter } from '@common/adapters';
 
 @Injectable()
 export class EncoderService {
   static async encodePassword(password: string) {
-    const salt = await genSalt(10);
-    return await hash(password, salt);
+    return bcryptAdapter.hash(password);
   }
 
   static async checkPassword(password: string, userPassword: string) {
     if (!userPassword) return false;
 
-    return await compare(password, userPassword);
+    return bcryptAdapter.compare(password, userPassword);
   }
 
-  encryptData(data: any, secretKey: string): string {
+  encryptData(data: unknown, secretKey: string): string {
     const key = this.generatePasswordEncryptDecrypt(secretKey);
     const iv = randomBytes(16);
     const cipher = createCipheriv('aes-256-gcm', key, iv);

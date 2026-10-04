@@ -236,7 +236,7 @@ export class AuthService {
 
   private generatePayload(user: UserPlatform) {
     const payload: PayloadLogin = {
-      sub: user.id as string,
+      sub: user.id,
       name: user.name,
       roles: user.roles,
     };
