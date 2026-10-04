@@ -6,6 +6,7 @@ import { Coupon, CouponDocument } from '@modules/coupons/schemas/coupon.schema';
 import { OrderStatus } from '../enums/order-status.enum';
 
 import { OrderItem, OrderItemSchema } from './order-item.schema';
+import { BaseSchema } from '@common/database';
 
 import {
   ShippingAddress,
@@ -13,7 +14,7 @@ import {
 } from './shipping-address.schema';
 
 @Schema({ timestamps: true, versionKey: false })
-export class Order {
+export class Order extends BaseSchema {
   @Prop({ required: true })
   email: string;
 

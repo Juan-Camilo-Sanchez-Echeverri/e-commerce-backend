@@ -6,15 +6,13 @@ import {
   ConflictException,
 } from '@nestjs/common';
 
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-
 import { Cron, CronExpression } from '@nestjs/schedule';
 
 import { checkExpiration } from '@common/helpers';
 
 import { EmailRequestDto } from './dto/email-request.dto';
 import type { TypeRequest } from './types/type-request';
+import { EmailRequestRepository } from './repositories/email-request.repository';
 import { EmailRequest } from './schemas/email-request.schema';
 import { ValidateEmailRequest } from './dto/validate-email-request.dto';
 import { activeAccount } from '../notifications/templates/email/active-account';
@@ -32,8 +30,7 @@ interface DataEmailSend {
 @Injectable()
 export class EmailRequestService {
   constructor(
-    @InjectModel(EmailRequest.name)
-    private emailRequestModel: Model<EmailRequest>,
+    private emailRequestRepository: EmailRequestRepository,
     private notificationService: NotificationsService,
   ) {}
 
@@ -42,7 +39,9 @@ export class EmailRequestService {
 
     const token = this.generateToken();
 
-    const existingRequest = await this.emailRequestModel.findOne({ email });
+    const existingRequest = await this.emailRequestRepository.findOne({
+      email,
+    });
 
     if (existingRequest) this.validateAttempts(existingRequest, type);
 
@@ -59,7 +58,7 @@ export class EmailRequestService {
       await this.sendEmailRecoverPassword({ email, token, password });
     }
 
-    await this.emailRequestModel.findOneAndUpdate({ email }, update, {
+    await this.emailRequestRepository.findOneAndUpdate({ email }, update, {
       new: true,
       upsert: true,
     });
@@ -94,9 +93,10 @@ export class EmailRequestService {
   async validate(validateEmailRequest: ValidateEmailRequest) {
     const { email, token, type } = validateEmailRequest;
 
-    const request = await this.emailRequestModel
-      .findOne({ email })
-      .select(`${type}`);
+    const request = await this.emailRequestRepository.findOne(
+      { email },
+      `${type}`,
+    );
 
     if (!request || request[type]?.token !== token) {
       throw new NotFoundException('Invalid token');
@@ -106,7 +106,7 @@ export class EmailRequestService {
       throw new ConflictException('Token expired');
     }
 
-    await this.emailRequestModel.updateOne(
+    await this.emailRequestRepository.updateOne(
       { email },
       { $set: { [`${type}.token`]: '', [`${type}.expiresIn`]: '' } },
     );
@@ -124,7 +124,7 @@ export class EmailRequestService {
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async cleanExpiredRequests() {
-    await this.emailRequestModel.deleteMany({
+    await this.emailRequestRepository.deleteMany({
       'activeAccount.expiresIn': { $lt: new Date() },
     });
   }

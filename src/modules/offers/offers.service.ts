@@ -6,8 +6,7 @@ import {
 } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
-import { InjectModel } from '@nestjs/mongoose';
-import { FilterQuery, PaginateModel, Types } from 'mongoose';
+import { QueryFilter, Types } from 'mongoose';
 
 import { FilterDto } from '@common/dto';
 import { Status } from '@common/enums';
@@ -18,6 +17,7 @@ import {
 } from '@common/constants';
 
 import { CreateOfferDto, UpdateOfferDto } from './dto';
+import { OffersRepository } from './repositories/offers.repository';
 import { Offer, OfferDocument } from './schemas/offer.schema';
 import {
   DISCOUNT_IS_REQUIRED,
@@ -28,12 +28,10 @@ import {
 const logger = new Logger('OffersService');
 @Injectable()
 export class OffersService {
-  constructor(
-    @InjectModel(Offer.name) private readonly offerModel: PaginateModel<Offer>,
-  ) {}
+  constructor(private readonly offersRepository: OffersRepository) {}
 
   async findOneById(id: string): Promise<OfferDocument> {
-    const offer = await this.offerModel.findById(id);
+    const offer = await this.offersRepository.findOneById(id);
 
     if (!offer) throw new NotFoundException(OFFER_NOT_FOUND);
 
@@ -41,19 +39,17 @@ export class OffersService {
   }
 
   async findOneByQuery(
-    query: FilterQuery<Offer>,
+    query: QueryFilter<Offer>,
   ): Promise<OfferDocument | null> {
-    return await this.offerModel.findOne(query);
+    return await this.offersRepository.findOne(query);
   }
 
   async findPaginate(filterDto: FilterDto<Offer>) {
-    const { page, limit, data } = filterDto;
-
-    return await this.offerModel.paginate(data, { limit, page });
+    return await this.offersRepository.findPaginate(filterDto);
   }
 
-  async findByQuery(query: FilterQuery<Offer>): Promise<OfferDocument[]> {
-    return await this.offerModel.find(query);
+  async findByQuery(query: QueryFilter<Offer>): Promise<OfferDocument[]> {
+    return await this.offersRepository.find(query);
   }
 
   async create(createOfferDto: CreateOfferDto): Promise<OfferDocument> {
@@ -64,7 +60,7 @@ export class OffersService {
 
     this.validateDates(expirationDate, startDate);
 
-    return await this.offerModel.create(createOfferDto);
+    return await this.offersRepository.create(createOfferDto);
   }
 
   async update(
@@ -79,25 +75,25 @@ export class OffersService {
 
     this.updateDates(offer, updateOfferDto);
 
-    return await this.offerModel.findByIdAndUpdate(
-      offer._id,
-      { $set: updateOfferDto },
-      { new: true },
-    );
+    return await this.offersRepository.findByIdAndUpdate(offer._id, {
+      $set: updateOfferDto,
+    });
   }
 
   async remove(offerId: string): Promise<OfferDocument> {
     await this.findOneById(offerId);
-    const offerDelete = await this.offerModel.findByIdAndDelete(offerId);
+    const offerDelete = await this.offersRepository.findByIdAndDelete(offerId);
 
-    return offerDelete!;
+    if (!offerDelete) throw new NotFoundException(OFFER_NOT_FOUND);
+
+    return offerDelete;
   }
 
   private async validateUniqueLabel(
     label: string,
     offerId: Types.ObjectId | null,
   ): Promise<void> {
-    const offer = await this.offerModel.findOne({
+    const offer = await this.offersRepository.findOne({
       label,
       _id: { $ne: offerId },
       status: Status.ACTIVE,
@@ -163,7 +159,7 @@ export class OffersService {
       status: Status.INACTIVE,
     };
 
-    const offers = await this.offerModel.find(filter);
+    const offers = await this.offersRepository.find(filter);
 
     const offersToUpdate: OfferDocument[] = [];
     const offersNotUpdated: { offer: OfferDocument; reason: string }[] = [];
@@ -186,7 +182,7 @@ export class OffersService {
 
     const dateCurrent = new Date();
 
-    const deactivate = await this.offerModel.updateMany(
+    const deactivate = await this.offersRepository.updateMany(
       {
         expirationDate: { $lte: dateCurrent },
         status: Status.ACTIVE,

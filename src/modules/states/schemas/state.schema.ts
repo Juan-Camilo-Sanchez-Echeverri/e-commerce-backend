@@ -1,8 +1,9 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
+import { BaseSchema } from '@common/database';
 
 @Schema({ timestamps: true })
-export class State {
+export class State extends BaseSchema {
   @Prop({ required: true, trim: true, index: true })
   code: string;
 

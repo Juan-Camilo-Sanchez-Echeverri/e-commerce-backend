@@ -5,10 +5,14 @@ import { extractUserFromRequest } from '../helpers';
 import { UserPlatform } from '../../modules/auth/interfaces';
 
 export const User = createParamDecorator(
-  (data: keyof UserPlatform, ctx: ExecutionContext) => {
+  (data: keyof UserPlatform | undefined, ctx: ExecutionContext) => {
     const request = ctx.switchToHttp().getRequest<Request>();
-    const user = extractUserFromRequest(request);
+    const user: UserPlatform | undefined = extractUserFromRequest(request);
 
-    return data ? (user?.[data] as keyof UserPlatform) : user;
+    if (!data) return user;
+
+    const record = user as unknown as Record<string, unknown>;
+
+    return record[data];
   },
 );

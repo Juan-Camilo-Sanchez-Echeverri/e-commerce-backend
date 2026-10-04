@@ -4,9 +4,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { InjectModel } from '@nestjs/mongoose';
-import { FilterQuery, PaginateModel } from 'mongoose';
+import { QueryFilter } from 'mongoose';
 
+import { StoreCustomerRepository } from './repositories/store-customer.repository';
 import {
   StoreCustomer,
   StoreCustomerDocument,
@@ -23,20 +23,19 @@ import { Status } from '../../common/enums';
 @Injectable()
 export class StoreCustomerService {
   constructor(
-    @InjectModel(StoreCustomer.name)
-    private readonly storeCustomerModel: PaginateModel<StoreCustomer>,
+    private readonly storeCustomerRepository: StoreCustomerRepository,
   ) {}
 
   async findOneByQuery(
-    query: FilterQuery<StoreCustomer>,
+    query: QueryFilter<StoreCustomer>,
   ): Promise<StoreCustomerDocument | null> {
-    return await this.storeCustomerModel.findOne(query);
+    return await this.storeCustomerRepository.findOne(query);
   }
 
   async findByQuery(
-    query: FilterQuery<StoreCustomer>,
+    query: QueryFilter<StoreCustomer>,
   ): Promise<StoreCustomerDocument[]> {
-    return await this.storeCustomerModel.find(query);
+    return await this.storeCustomerRepository.find(query);
   }
 
   async create(
@@ -51,15 +50,15 @@ export class StoreCustomerService {
       };
     }
 
-    return await this.storeCustomerModel.create(createStoreCustomerDto);
+    return await this.storeCustomerRepository.create(createStoreCustomerDto);
   }
 
   async findAll(): Promise<StoreCustomer[]> {
-    return await this.storeCustomerModel.find();
+    return await this.storeCustomerRepository.find({});
   }
 
   async findById(id: string) {
-    const customerUser = await this.storeCustomerModel.findById(id, {
+    const customerUser = await this.storeCustomerRepository.findOneById(id, {
       password: 0,
     });
 
@@ -83,20 +82,22 @@ export class StoreCustomerService {
       };
     }
 
-    return await this.storeCustomerModel.findByIdAndUpdate(
-      id,
-      { $set: updateStoreCustomerDto },
-      { new: true },
-    );
+    return await this.storeCustomerRepository.findByIdAndUpdate(id, {
+      $set: updateStoreCustomerDto,
+    });
   }
 
   async remove(id: string): Promise<StoreCustomer | null> {
     await this.findById(id);
-    return await this.storeCustomerModel.findByIdAndDelete(id, { new: true });
+    return await this.storeCustomerRepository.findByIdAndDelete(id, {
+      new: true,
+    });
   }
 
   async findOneByPhone(phoneNumber: string): Promise<StoreCustomer | null> {
-    return await this.storeCustomerModel.findOne({ phone: phoneNumber });
+    return await this.storeCustomerRepository.findOne({
+      phone: phoneNumber,
+    });
   }
 
   checkUser(user: StoreCustomerDocument): void {
