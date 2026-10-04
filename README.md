@@ -40,7 +40,7 @@ Un valor vacío en una variable requerida hace fallar el arranque.
 
 | Script | Descripción |
 | --- | --- |
-| `pnpm run build` | Compila TypeScript (gate de CI) |
+| `pnpm run build` | Compila TypeScript |
 | `pnpm run lint` | ESLint + Prettier con `--fix` |
 | `pnpm test` | Jest unitario |
 | `pnpm run test:e2e` | Jest e2e |
@@ -155,6 +155,5 @@ para config: vive en `@modules/config`.
 ## Notas
 
 - No hay tests todavía. `pnpm test` corre con `--passWithNoTests`.
-- CI (`.github/workflows/ci.yml`) ejecuta `pnpm lint` y luego `pnpm build`.
 - `CHANGELOG` y este README describen el estado actual; el historial de `main`
   incluye el merge que consolidó los dos repositorios.
