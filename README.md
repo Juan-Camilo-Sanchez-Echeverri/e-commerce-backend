@@ -1,88 +1,121 @@
-# E-commerce Backend
+# e-commerce-backend
 
-## Instalación de Node.js o NVM (Node Version Manager)
+Backend único para e-commerce. NestJS 11 + MongoDB/Mongoose + JWT + MercadoPago.
 
-Si se tiene instalado [Node.js](https://nodejs.org/) o [NVM](https://github.com/nvm-sh/nvm) en el sistema, se puede saltar este paso.
+Este repositorio es el canónico. Fusiona el código e-commerce que antes vivía
+duplicado en dos repositorios:
 
-Para instalar Node.js, se debe ejecutar el siguiente comando:
+| Origen previo | Rama / commit | Qué aportó |
+| --- | --- | --- |
+| `store` | `local` / `d2ed7d7` | Código e-commerce completo (productos, órdenes, pagos, cupones, auth) |
+| `e-commerce-backend` (main) | `95a6dda` | Infra: helmet con CSP, CORS configurable, Swagger, `AsyncLocalStorage`, validación 422 con errores aplanados, joi en envs |
 
-```bash
-sudo apt-get update
+## Requisitos
 
-sudo apt-get install nodejs
+- Node.js 22
+- MongoDB 7 (la app usa transacciones en `register`)
+- npm 10+
 
-# Para verificar la versión de Node.js
-node -v
-```
-
-Si se desea instalar NVM, se deben ejecutar los siguientes comandos:
-
-```bash
-# Descargar e instalar nvm:
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
-
-# Instalar la última versión de Node.js
-nvm install node
-
-# Verificar la instalación:
-node -v
-
-# Verificar la instalación de npm:
-npm -v
-```
-
-## Instalar dependencias
-
-Para instalar las dependencias, se debe ejecutar el siguiente comando:
+## Puesta en marcha
 
 ```bash
 npm install
+cp .env.example .env.local   # y completa los valores
+npm run start:db             # levanta MongoDB con Docker
+npm run start:dev
 ```
 
-## Configurar variables de entorno
+- API: `http://localhost:3000/api/v1`
+- Swagger: `http://localhost:3000/docs`
+- Uploads estáticos: `http://localhost:3000/resources`
 
-Cree los archivos de entorno necesarios en la raíz del proyecto y añada las variables de entorno necesarias. Puede usar el archivo de ejemplo como referencia.
+Las variables se validan con Joi al arrancar. `NODE_ENV` decide el archivo:
+`local` → `.env.local`, `development` → `.env.development`, `production` → `.env`.
+Un valor vacío en una variable requerida hace fallar el arranque.
 
-- Para entorno **local**:
+## Scripts
 
-  ```bash
-  cp .env.example .env.local
-  ```
+| Script | Descripción |
+| --- | --- |
+| `npm run build` | Compila TypeScript (gate de CI) |
+| `npm run lint` | ESLint + Prettier con `--fix` |
+| `npm test` | Jest unitario |
+| `npm run test:e2e` | Jest e2e |
+| `npm run start:db` | MongoDB via Docker |
+| `npm run pm2:*` | Despliegue con PM2 |
 
-- Para entorno de **desarrollo**:
+## Arquitectura
 
-  ```bash
-  cp .env.example .env.development
-  ```
-
-- Para entorno de **producción**:
-
-  ```bash
-  cp .env.example .env
-  ```
-
-Edite los archivos `.env.local`, `.env.development` y `.env` con sus configuraciones.
-
-## Ejecutar en local
-
-Para iniciar el servidor en la máquina local y estas usando Windows como sistema operativo , ejecute:
-
-```bash
-# Modo normal
-npm run start
-
-# Modo watch
-npm run start:dev:win
+```
+src/
+├── common/          # capa compartida (@common/*)
+│   ├── constants/   # strings reutilizados como prefijos de controller y caché
+│   ├── decorators/  # @Public, @Roles, @User, @IsPassword, @IsNotBlank
+│   ├── dto/         # FilterDto, PaginationDto, AddressDto
+│   ├── enums/       # ExecModes, Role, Status, SalesStatus
+│   ├── filters/     # HttpExceptionFilter (global)
+│   ├── guards/      # RolesGuard (global)
+│   ├── helpers/     # fechas, archivos, validación, AsyncLocalStorage
+│   ├── interceptors/# ResponseInterceptor (global)
+│   ├── middlewares/ # LoggerMiddleware, AsyncLocalStorageMiddleware
+│   ├── pipes/       # ParseMongoIdPipe (global), validación de archivos
+│   └── schemas/     # Address (embebido)
+├── modules/         # negocio (@modules/*)
+│   ├── config/      # envs (Joi), Mongoose, CORS, Swagger
+│   ├── auth/        # login, activation, recuperación de contraseña
+│   ├── register/    # alta de usuarios (transaccional)
+│   ├── users/       # usuarios internos (ADMIN/SUPERVISOR)
+│   ├── store-customers/  # clientes de la tienda (CUSTOMER)
+│   ├── products/    # productos, variantes, stock por talla
+│   ├── categories/ subcategories/ offers/
+│   ├── orders/      # órdenes, cupones, descuentos
+│   ├── coupons/
+│   ├── payments/    # MercadoPago + webhook
+│   ├── favorites/ encoder/
+│   ├── notifications/  # emails (nodemailer) vía eventos
+│   ├── email-marketing/ email-request/
+│   ├── log/         # Winston + Slack
+│   └── cities/ states/
+├── app.module.ts
+└── main.ts
 ```
 
-Si está usando Linux o MacOS, ejecute:
+### Globally registered
 
-```bash
-# Modo normal
-npm run start
+| Token | Clase |
+| --- | --- |
+| `APP_FILTER` | `HttpExceptionFilter` |
+| `APP_GUARD` | `AuthGuard` (JWT), `RolesGuard` |
+| `APP_INTERCEPTOR` | `ResponseInterceptor` |
+| `APP_PIPE` | `ParseMongoIdPipe` |
 
-# Modo watch
-npm run start:dev:linux
+Todas las rutas requieren JWT salvo las marcadas con `@Public()`.
+
+### Shape de respuestas
+
+Éxito (envuelto por `ResponseInterceptor`):
+
+```json
+{ "success": true, "message": "...", "data": {} }
 ```
 
-El servidor se ejecutará en `http://localhost:<PORT>` donde `<PORT>` es el puerto configurado en el archivo `.env.local`.
+Error (envuelto por `HttpExceptionFilter`):
+
+```json
+{ "success": false, "message": "...", "data": null, "errors": [] }
+```
+
+`errors` solo aparece en errores de validación (422) y lista
+`{ property, errors }` por campo, incluyendo campos anidados.
+
+### Path aliases
+
+`@common/*` → `src/common/*` y `@modules/*` → `src/modules/*`, declarados en
+`tsconfig.json` y replicados en el `moduleNameMapper` de Jest. No hay alias
+para config: vive en `@modules/config`.
+
+## Notas
+
+- No hay tests todavía. `npm test` corre con `--passWithNoTests`.
+- `CHANGELOG` y este README describen el estado actual; el historial de `main`
+  incluye el merge que consolidó los dos repositorios.

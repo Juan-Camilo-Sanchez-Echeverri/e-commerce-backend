@@ -1,65 +1,84 @@
-import { Response } from 'express';
-
 import {
   ExceptionFilter,
   Catch,
   ArgumentsHost,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
+import { Request, Response } from 'express';
 
-import { ErrorsResponse } from '../responses/errors.response';
+import { ExecModes } from '../enums';
+import { envs } from '@modules/config';
+import { LogService } from '@modules/log/log.service';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
-  catch(exception: Error | HttpException, host: ArgumentsHost): Response {
+  private readonly logger = new Logger(HttpExceptionFilter.name, {
+    timestamp: true,
+  });
+
+  constructor(private readonly logService: LogService) {}
+
+  catch(exception: Error, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
+    const request = ctx.getRequest<Request>();
 
     const status: HttpStatus =
       exception instanceof HttpException
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
+    const isInternalServerError = status === HttpStatus.INTERNAL_SERVER_ERROR;
+    const isNotLocalEnvironment = envs.nodeEnv !== ExecModes.LOCAL;
+
+    if (isInternalServerError && isNotLocalEnvironment) {
+      this.logService.sendNotificationSlack(request, status, exception);
+    }
+
+    if (isInternalServerError || !isNotLocalEnvironment) {
+      this.logger.error(exception.message, exception.stack);
+    }
+
     const exceptionResponse =
       exception instanceof HttpException
         ? exception.getResponse()
         : 'Internal server error';
 
-    const errorMessage = this.extractMessage(exceptionResponse);
-    const errorCode = this.extractCode(exceptionResponse);
+    const baseMessage = this.extractMessage(exceptionResponse);
+    const messageException = this.getFormattedMessage(baseMessage);
     const errors = this.extractErrors(exceptionResponse);
 
-    const responseBody: ErrorsResponse = {
-      code: errorCode,
-      message: errorMessage,
-      errors: errors.length > 0 ? errors : undefined,
-    };
-
-    return response.status(status).json(responseBody);
+    return response.status(status).json({
+      success: false,
+      message: messageException,
+      data: null,
+      ...(errors.length > 0 ? { errors } : {}),
+    });
   }
 
-  private extractMessage(response: string | object): string {
-    if (typeof response === 'object' && 'message' in response) {
-      return response.message as string;
+  private extractMessage(response: unknown): string | string[] {
+    if (typeof response === 'object' && 'message' in response!) {
+      return response.message as string | string[];
     }
 
     return response as string;
   }
 
-  private extractCode(response: string | object): number | null {
-    if (typeof response === 'object' && 'code' in response) {
-      return response.code as number;
-    }
-    return null;
-  }
-
   private extractErrors(
-    response: string | object,
+    response: unknown,
   ): Array<{ property: string; errors: string[] }> {
-    if (typeof response === 'object' && 'errors' in response) {
+    if (typeof response === 'object' && response && 'errors' in response) {
       return response.errors as Array<{ property: string; errors: string[] }>;
     }
+
     return [];
+  }
+
+  private getFormattedMessage(message: string | string[]) {
+    return typeof message === 'string' && message.includes('ENOENT')
+      ? 'File not found'
+      : message;
   }
 }

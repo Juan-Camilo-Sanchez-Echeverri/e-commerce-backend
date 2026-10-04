@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "esModuleInterop": true,
     "module": "commonjs",
     "declaration": true,
     "removeComments": true,
@@ -11,7 +10,6 @@
     "sourceMap": true,
     "outDir": "./dist",
     "baseUrl": "./",
-    "typeRoots": ["./types", "./node_modules/@types"],
     "incremental": true,
     "skipLibCheck": true,
     "strictNullChecks": true,
@@ -24,8 +22,7 @@
     "noImplicitReturns": true,
     "paths": {
       "@common/*": ["src/common/*"],
-      "@modules/*": ["src/modules/*"],
-      "@config/*": ["src/config/*"],
+      "@modules/*": ["src/modules/*"]
     }
   }
 }

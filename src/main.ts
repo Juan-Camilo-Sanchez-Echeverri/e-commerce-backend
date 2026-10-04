@@ -1,7 +1,9 @@
+import { join } from 'path';
+
 import { NestFactory } from '@nestjs/core';
 
 import {
-  ConsoleLogger,
+  Logger,
   UnprocessableEntityException,
   ValidationPipe,
   VersioningType,
@@ -14,16 +16,13 @@ import helmet from 'helmet';
 
 import { AppModule } from './app.module';
 
-import { envs, corsConfig, setupSwagger } from '@config/index';
+import { corsConfig, envs, setupSwagger } from '@modules/config';
 
 import { getClassValidatorErrors } from '@common/helpers';
 
-const logger = new ConsoleLogger({ prefix: 'E-commerce' });
+const logger = new Logger('App');
 
 async function bootstrap(): Promise<void> {
-  /**
-   * Create the application.
-   */
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger,
   });
@@ -56,11 +55,16 @@ async function bootstrap(): Promise<void> {
   app.set('trust proxy', true);
   app.set('query parser', 'extended');
 
+  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
+    prefix: '/resources',
+  });
+
   /**
    * Use global pipes.
    */
   app.useGlobalPipes(
     new ValidationPipe({
+      errorHttpStatusCode: 422,
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
@@ -81,7 +85,7 @@ async function bootstrap(): Promise<void> {
   app.enableVersioning({
     type: VersioningType.URI,
     prefix: 'v',
-    defaultVersion: '1.0',
+    defaultVersion: '1',
   });
 
   setupSwagger(app);
@@ -90,7 +94,7 @@ async function bootstrap(): Promise<void> {
   logger.log(`Server running on ${await app.getUrl()} 🚀 in ${envs.nodeEnv}`);
 }
 
-bootstrap().catch((err) => {
-  logger.error('Error during app bootstrap', err);
+bootstrap().catch((error) => {
+  logger.error('Error during app bootstrap', error);
   process.exit(1);
 });
