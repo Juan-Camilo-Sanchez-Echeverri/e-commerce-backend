@@ -2,7 +2,7 @@ import { IsNotBlank } from '../../../common/decorators';
 
 export class CreateCityDto {
   @IsNotBlank({ message: 'The department is required' })
-  department: any;
+  department: string;
 
   @IsNotBlank({ message: 'Code is required' })
   code: string;

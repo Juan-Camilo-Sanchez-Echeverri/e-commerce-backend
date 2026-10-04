@@ -35,6 +35,10 @@ interface EnvVars {
   MERCADO_PAGO_ACCESS_TOKEN: string;
   MERCADO_PAGO_WEBHOOK_TOKEN: string;
   MERCADO_PAGO_URL_WEBHOOK: string;
+
+  REDIS_HOST: string;
+  REDIS_PORT: number;
+  REDIS_PASSWORD: string;
 }
 
 const envSchema = joi
@@ -62,6 +66,10 @@ const envSchema = joi
     MERCADO_PAGO_ACCESS_TOKEN: joi.string().required(),
     MERCADO_PAGO_WEBHOOK_TOKEN: joi.string().required(),
     MERCADO_PAGO_URL_WEBHOOK: joi.string().required(),
+
+    REDIS_HOST: joi.string().required(),
+    REDIS_PORT: joi.number().required(),
+    REDIS_PASSWORD: joi.string().allow('').default(''),
   })
   .unknown(true);
 
@@ -105,4 +113,8 @@ export const envs = {
   mercadoPagoAccessToken: envVars.MERCADO_PAGO_ACCESS_TOKEN,
   mercadoPagoWebhookToken: envVars.MERCADO_PAGO_WEBHOOK_TOKEN,
   mercadoPagoUrlWebhook: envVars.MERCADO_PAGO_URL_WEBHOOK,
+
+  redisHost: envVars.REDIS_HOST,
+  redisPort: envVars.REDIS_PORT,
+  redisPassword: envVars.REDIS_PASSWORD,
 };

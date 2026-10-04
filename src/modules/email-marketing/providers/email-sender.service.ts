@@ -1,8 +1,5 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 
-import { InjectModel } from '@nestjs/mongoose';
-import { PaginateModel } from 'mongoose';
-
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob } from 'cron';
 
@@ -12,13 +9,12 @@ import { envs } from '@modules/config';
 
 import { convertDateToCron } from '../helpers';
 import { CreateEmailMarketingDto, UpdateEmailMarketingDto } from '../dto';
-import { EmailMarketing } from '../schemas/email-marketing.schema';
+import { EmailMarketingRepository } from '../repositories/email-marketing.repository';
 
 @Injectable()
 export class EmailSenderService {
   constructor(
-    @InjectModel(EmailMarketing.name)
-    private readonly emailMarketingModel: PaginateModel<EmailMarketing>,
+    private readonly emailMarketingRepository: EmailMarketingRepository,
     private readonly storeCustomerService: StoreCustomerService,
     private readonly schedulerRegistry: SchedulerRegistry,
     private notificationService: NotificationsService,
@@ -86,6 +82,8 @@ export class EmailSenderService {
   }
 
   private async updateCampaignAsSent(jobId: string): Promise<void> {
-    await this.emailMarketingModel.findByIdAndUpdate(jobId, { isSent: true });
+    await this.emailMarketingRepository.findByIdAndUpdate(jobId, {
+      isSent: true,
+    });
   }
 }

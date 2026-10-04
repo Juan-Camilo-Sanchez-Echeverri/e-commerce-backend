@@ -2,9 +2,10 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import mongoose, { HydratedDocument } from 'mongoose';
 
 import { Status } from '@common/enums';
+import { BaseSchema } from '@common/database';
 
 @Schema({ timestamps: true, versionKey: false })
-export class Offer {
+export class Offer extends BaseSchema {
   @Prop({ index: true })
   label: string;
 

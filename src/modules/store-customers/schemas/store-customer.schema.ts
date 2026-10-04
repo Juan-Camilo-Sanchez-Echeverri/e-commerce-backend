@@ -2,11 +2,12 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 
 import { Role, Status } from '@common/enums';
-import { validateMongo } from '@common/helpers/validate-mongo.helper';
+import { validateMongo } from '@common/helpers/mongo.helpers';
 import { Address, AddressSchema } from '@common/schemas/address.schema';
+import { BaseSchema } from '@common/database';
 
 @Schema({ timestamps: true, versionKey: false })
-export class StoreCustomer {
+export class StoreCustomer extends BaseSchema {
   @Prop()
   name: string;
 

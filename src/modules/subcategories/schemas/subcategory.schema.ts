@@ -1,10 +1,11 @@
-import { Document } from 'mongoose';
+import { HydratedDocument } from 'mongoose';
 import { Prop, SchemaFactory, Schema } from '@nestjs/mongoose';
 
 import { Status } from '@common/enums';
+import { BaseSchema } from '@common/database';
 
 @Schema({ timestamps: true, versionKey: false })
-export class Subcategory extends Document {
+export class Subcategory extends BaseSchema {
   @Prop({ required: true })
   name: string;
 
@@ -17,17 +18,20 @@ export class Subcategory extends Document {
 
 export const SubcategorySchema = SchemaFactory.createForClass(Subcategory);
 
-SubcategorySchema.post('findOneAndDelete', async function (doc: Subcategory) {
-  // Sacar de categories.subcategories
+SubcategorySchema.post(
+  'findOneAndDelete',
+  async function (doc: HydratedDocument<Subcategory>) {
+    // Sacar de categories.subcategories
 
-  if (this.model && this.model.db) {
-    const id = doc._id;
+    if (this.model && this.model.db) {
+      const id = doc._id;
 
-    await this.model.db.collection('categories').updateMany(
-      {
-        subcategories: { $in: [id] },
-      },
-      { $pull: { subcategories: doc._id } as never },
-    );
-  }
-});
+      await this.model.db.collection('categories').updateMany(
+        {
+          subcategories: { $in: [id] },
+        },
+        { $pull: { subcategories: doc._id } as never },
+      );
+    }
+  },
+);

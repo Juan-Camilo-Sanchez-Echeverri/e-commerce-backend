@@ -3,22 +3,17 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
 import { SchedulerRegistry } from '@nestjs/schedule';
 
-import {
-  EmailMarketingDocument,
-  EmailMarketing,
-} from './schemas/email-marketing.schema';
+import { EmailMarketingRepository } from './repositories/email-marketing.repository';
+import { EmailMarketingDocument } from './schemas/email-marketing.schema';
 import { EmailSenderService } from './providers/email-sender.service';
 import { CreateEmailMarketingDto, UpdateEmailMarketingDto } from './dto';
 
 @Injectable()
 export class EmailMarketingService {
   constructor(
-    @InjectModel(EmailMarketing.name)
-    private readonly emailMarketingModel: Model<EmailMarketing>,
+    private readonly emailMarketingRepository: EmailMarketingRepository,
     private readonly emailSenderService: EmailSenderService,
     private readonly schedulerRegistry: SchedulerRegistry,
   ) {}
@@ -26,7 +21,7 @@ export class EmailMarketingService {
   async send(
     createEmailMarketingDto: CreateEmailMarketingDto,
   ): Promise<EmailMarketingDocument> {
-    const newCampaign = await this.emailMarketingModel.create(
+    const newCampaign = await this.emailMarketingRepository.create(
       createEmailMarketingDto,
     );
 
@@ -38,10 +33,7 @@ export class EmailMarketingService {
       }
     }
 
-    await this.createAndScheduleJob(
-      newCampaign.id as string,
-      createEmailMarketingDto,
-    );
+    await this.createAndScheduleJob(newCampaign.id, createEmailMarketingDto);
 
     return newCampaign;
   }
@@ -50,7 +42,7 @@ export class EmailMarketingService {
     id: string,
     updateEmailMarketingDto: UpdateEmailMarketingDto,
   ): Promise<EmailMarketingDocument> {
-    const campaign = await this.emailMarketingModel.findOne({
+    const campaign = await this.emailMarketingRepository.findOne({
       _id: id,
       isSent: false,
     });
@@ -61,19 +53,23 @@ export class EmailMarketingService {
 
     this.stopAndRemoveJob(id);
 
-    const updatedCampaign = await this.emailMarketingModel.findByIdAndUpdate(
-      id,
-      updateEmailMarketingDto,
-      { new: true },
-    );
+    const updatedCampaign =
+      await this.emailMarketingRepository.findByIdAndUpdate(
+        id,
+        updateEmailMarketingDto,
+      );
+
+    if (!updatedCampaign) {
+      throw new NotFoundException('Campaign not found.');
+    }
 
     await this.createAndScheduleJob(id, updateEmailMarketingDto);
 
-    return updatedCampaign!;
+    return updatedCampaign;
   }
 
   async remove(id: string): Promise<EmailMarketingDocument | null> {
-    const campaign = await this.emailMarketingModel.findById(id);
+    const campaign = await this.emailMarketingRepository.findOneById(id);
 
     if (!campaign) {
       throw new NotFoundException('Campaign not found.');
@@ -81,15 +77,15 @@ export class EmailMarketingService {
 
     this.stopAndRemoveJob(id);
 
-    return await this.emailMarketingModel.findByIdAndDelete(id);
+    return await this.emailMarketingRepository.findByIdAndDelete(id);
   }
 
   async findAll(): Promise<EmailMarketingDocument[]> {
-    return await this.emailMarketingModel.find();
+    return await this.emailMarketingRepository.find({});
   }
 
   async findOne(id: string): Promise<EmailMarketingDocument | null> {
-    return await this.emailMarketingModel.findById(id);
+    return await this.emailMarketingRepository.findOneById(id);
   }
 
   private async createAndScheduleJob(
@@ -102,7 +98,7 @@ export class EmailMarketingService {
   private stopAndRemoveJob(jobName: string): void {
     const existingJob = this.schedulerRegistry.getCronJob(jobName);
     if (existingJob) {
-      existingJob.stop();
+      void existingJob.stop();
       this.schedulerRegistry.deleteCronJob(jobName);
     }
   }

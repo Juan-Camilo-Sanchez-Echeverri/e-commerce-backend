@@ -17,9 +17,10 @@ interface ResponseData {
   data: Data;
 }
 @Injectable()
-export class ResponseInterceptor<T extends Data>
-  implements NestInterceptor<T, ResponseData>
-{
+export class ResponseInterceptor<T extends Data> implements NestInterceptor<
+  T,
+  ResponseData
+> {
   intercept(
     _context: ExecutionContext,
     next: CallHandler,
