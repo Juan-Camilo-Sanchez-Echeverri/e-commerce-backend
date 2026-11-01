@@ -1,0 +1,55 @@
+# syntax=docker/dockerfile:1
+
+# deps: dependencias de produccion
+FROM node:24-alpine AS deps
+
+# bcrypt (node-gyp) y sharp (musl) necesitan toolchain y libc de compatibilidad.
+RUN apk add --no-cache python3 make g++ libc6-compat
+
+WORKDIR /app
+
+# pnpm-workspace.yaml es obligatorio: define `allowBuilds` y sin el, pnpm 11
+# bloquea los scripts de instalacion de bcrypt/sharp y la imagen no arranca.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+
+RUN corepack enable && pnpm install --frozen-lockfile --prod
+
+
+# build: compilacion de TypeScript
+FROM node:24-alpine AS build
+
+RUN apk add --no-cache python3 make g++ libc6-compat
+
+WORKDIR /app
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+
+RUN corepack enable && pnpm install --frozen-lockfile
+
+COPY tsconfig.json tsconfig.build.json nest-cli.json ./
+COPY src ./src
+
+RUN pnpm build
+
+
+# prod: imagen final, solo con dependencias de produccion
+FROM node:24-alpine AS prod
+
+WORKDIR /app
+
+RUN addgroup -S ecom-group && adduser -S ecom -G ecom-group
+
+ENV NODE_ENV=production
+
+COPY --from=deps --chown=ecom:ecom-group /app/node_modules ./node_modules
+COPY --from=build --chown=ecom:ecom-group /app/dist ./dist
+COPY --chown=ecom:ecom-group package.json ./
+
+# `uploads` se sirve como assets estaticos en /resources, `logs` lo usa PM2/docker.
+RUN mkdir -p /app/uploads /app/logs && chown -R ecom:ecom-group /app
+
+USER ecom
+
+EXPOSE 3000
+
+CMD [ "node", "dist/main.js" ]

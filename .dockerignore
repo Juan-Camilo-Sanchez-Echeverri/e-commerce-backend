@@ -1,8 +1,31 @@
 dist/
 node_modules/
-.gitignore
-mongo/
 
 .git/
+.github/
+.gitignore
 
+# Secretos: nunca deben entrar al contexto de build.
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+.env.*
+
+# Datos y volumenes de infraestructura local.
+mongo/
+mongo-dev/
+redis/
+redis-dev/
 uploads/
+temp-uploads/
+logs/
+
+coverage/
+.nyc_output/
+.temp/
+.tmp/
+.idea/
+.vscode/
+*.log
