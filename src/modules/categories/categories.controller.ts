@@ -1,3 +1,4 @@
+import { Status } from '@common/enums';
 import {
   Controller,
   Get,
@@ -13,7 +14,7 @@ import { Public, Roles } from '@common/decorators';
 import { CreateCategoryDto, UpdateCategoryDto } from './dto';
 import { CategoriesService } from './categories.service';
 import { Category } from './schemas/category.schema';
-import { PaginateResult } from 'mongoose';
+import { PaginateResult } from '@common/database';
 import { ValidateSubcategoryPipe } from './pipes/validate-subcategory.pipe';
 
 @Controller('categories')
@@ -29,7 +30,9 @@ export class CategoriesController {
   @Public()
   @Get('public')
   async findPublic(): Promise<PaginateResult<Category>> {
-    return this.categoriesService.findPaginate({ data: { status: 'active' } });
+    return this.categoriesService.findPaginate({
+      data: { status: Status.ACTIVE },
+    });
   }
 
   @Get(':categoryId')

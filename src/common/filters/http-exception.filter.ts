@@ -12,6 +12,11 @@ import { ExecModes } from '../enums';
 import { envs } from '@modules/config';
 import { LogService } from '@modules/log/log.service';
 
+interface ValidationError {
+  property: string;
+  errors: string[];
+}
+
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(HttpExceptionFilter.name, {
@@ -20,7 +25,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
   constructor(private readonly logService: LogService) {}
 
-  catch(exception: Error, host: ArgumentsHost) {
+  catch(exception: Error | HttpException, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
@@ -30,14 +35,14 @@ export class HttpExceptionFilter implements ExceptionFilter {
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const isInternalServerError = status === HttpStatus.INTERNAL_SERVER_ERROR;
-    const isNotLocalEnvironment = envs.nodeEnv !== ExecModes.LOCAL;
+    const isInternalServerError = Math.floor(status / 100) === 5;
+    const isProduction = envs.nodeEnv === ExecModes.PROD;
 
-    if (isInternalServerError && isNotLocalEnvironment) {
+    if (isInternalServerError && !isProduction) {
       this.logService.sendNotificationSlack(request, status, exception);
     }
 
-    if (isInternalServerError || !isNotLocalEnvironment) {
+    if (isInternalServerError || !isProduction) {
       this.logger.error(exception.message, exception.stack);
     }
 
@@ -46,13 +51,16 @@ export class HttpExceptionFilter implements ExceptionFilter {
         ? exception.getResponse()
         : 'Internal server error';
 
-    const baseMessage = this.extractMessage(exceptionResponse);
-    const messageException = this.getFormattedMessage(baseMessage);
     const errors = this.extractErrors(exceptionResponse);
+    const message = this.getFormattedMessage(
+      this.extractMessage(exceptionResponse),
+    );
 
-    return response.status(status).json({
+    response.status(status).json({
       success: false,
-      message: messageException,
+      code: this.extractCode(exceptionResponse, exception, errors),
+      status,
+      message,
       data: null,
       ...(errors.length > 0 ? { errors } : {}),
     });
@@ -66,14 +74,52 @@ export class HttpExceptionFilter implements ExceptionFilter {
     return response as string;
   }
 
-  private extractErrors(
-    response: unknown,
-  ): Array<{ property: string; errors: string[] }> {
+  private extractErrors(response: unknown): ValidationError[] {
     if (typeof response === 'object' && response && 'errors' in response) {
-      return response.errors as Array<{ property: string; errors: string[] }>;
+      return response.errors as ValidationError[];
     }
 
     return [];
+  }
+
+  /**
+   * Builds a stable, machine-readable error code so clients can branch on it
+   * instead of parsing human-readable messages.
+   */
+  private extractCode(
+    response: unknown,
+    exception: Error | HttpException,
+    errors: ValidationError[],
+  ): string {
+    if (
+      typeof response === 'object' &&
+      response &&
+      'code' in response &&
+      response.code
+    ) {
+      return response.code as string;
+    }
+
+    const fields = errors.map((error) => error.property);
+
+    if (fields.length === 1) {
+      return `invalid-${this.toKebab(fields[0])}`;
+    }
+
+    if (fields.length > 1) {
+      return 'validation-error';
+    }
+
+    const name = exception.constructor.name.replace(/Exception$/, '');
+    if (name === 'Http') return 'internal-server-error';
+
+    return name.replace(/([A-Z])/g, (_match: string, l: string, i: number) => {
+      return (i > 0 ? '-' : '') + l.toLowerCase();
+    });
+  }
+
+  private toKebab(str: string): string {
+    return str.replace(/([A-Z])/g, '-$1').toLowerCase();
   }
 
   private getFormattedMessage(message: string | string[]) {

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 
 import { FavoritesController } from './favorites.controller';
+import { FavoritesRepository } from './repositories/favorites.repository';
 import { FavoritesService } from './favorites.service';
 import { Favorite, FavoriteSchema } from './schemas/favorite.schema';
 
@@ -12,6 +13,6 @@ import { Favorite, FavoriteSchema } from './schemas/favorite.schema';
     ]),
   ],
   controllers: [FavoritesController],
-  providers: [FavoritesService],
+  providers: [FavoritesService, FavoritesRepository],
 })
 export class FavoritesModule {}

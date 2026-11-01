@@ -31,7 +31,7 @@ export class ProductsController {
   @Public()
   @Post('public')
   async findPublic(@Body() query: FilterDto<ProductDocument>) {
-    query.data = { ...query.data, status: 'active' };
+    query.data = { ...query.data, status: Status.ACTIVE };
     return await this.productsService.findPublic(query);
   }
 

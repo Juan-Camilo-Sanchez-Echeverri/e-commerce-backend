@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 
 import { StatesController } from './states.controller';
+import { StatesRepository } from './repositories/states.repository';
 import { StatesService } from './states.service';
 import { State, StateSchema } from './schemas/state.schema';
 
@@ -15,7 +16,7 @@ import { State, StateSchema } from './schemas/state.schema';
     ]),
   ],
   controllers: [StatesController],
-  providers: [StatesService],
+  providers: [StatesService, StatesRepository],
   exports: [StatesService],
 })
 export class StatesModule {}

@@ -1,12 +1,11 @@
+import { PaginateResult } from '@common/database';
+
 import {
   Injectable,
   OnModuleInit,
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-
-import { InjectModel } from '@nestjs/mongoose';
-import { FilterQuery, PaginateModel } from 'mongoose';
 
 import {
   NOT_EXIST_USER,
@@ -18,18 +17,19 @@ import { generatePassword } from '@common/helpers';
 import { Role, Status } from '@common/enums';
 
 import { CreateUserDto, UpdateUserDto } from './dto';
+import { UsersRepository } from './repositories/users.repository';
 import { User, UserDocument } from './schemas/user.schema';
 import { envs } from '../config';
 import { FilterDto } from '@common/dto';
-import { PaginateResult } from 'mongoose';
+import { QueryFilter } from 'mongoose';
 import { EncoderService } from '../encoder/encoder.service';
 
 @Injectable()
 export class UsersService implements OnModuleInit {
-  constructor(@InjectModel(User.name) private userModel: PaginateModel<User>) {}
+  constructor(private readonly usersRepository: UsersRepository) {}
 
   async onModuleInit(): Promise<void> {
-    const users = await this.userModel.countDocuments();
+    const users = await this.usersRepository.count({});
     if (users === 0) {
       await this.createUser({
         name: envs.defaultUserName,
@@ -44,29 +44,24 @@ export class UsersService implements OnModuleInit {
   }
 
   async findOneById(id: string): Promise<UserDocument> {
-    const user = await this.userModel.findById(id);
+    const user = await this.usersRepository.findOneById(id);
     if (!user) throw new NotFoundException(NOT_EXIST_USER);
 
     return user;
   }
 
-  async findOneByQuery(
-    query: FilterQuery<UserDocument>,
-  ): Promise<UserDocument | null> {
-    return await this.userModel.findOne(query);
+  async findOneByQuery(query: QueryFilter<User>): Promise<UserDocument | null> {
+    return await this.usersRepository.findOne(query);
   }
 
   async findPaginate(
-    dto: FilterDto<UserDocument>,
+    dto: FilterDto<User>,
   ): Promise<PaginateResult<UserDocument>> {
-    const { data, limit, page } = dto;
-    return await this.userModel.paginate(data, { page, limit });
+    return await this.usersRepository.findPaginate(dto);
   }
 
-  async findByQuery(
-    query: FilterQuery<UserDocument> = {},
-  ): Promise<UserDocument[]> {
-    return await this.userModel.find(query);
+  async findByQuery(query: QueryFilter<User> = {}): Promise<UserDocument[]> {
+    return await this.usersRepository.find(query);
   }
 
   async createUser(createUserDto: CreateUserDto): Promise<UserDocument> {
@@ -74,7 +69,7 @@ export class UsersService implements OnModuleInit {
 
     createUserDto.password = await EncoderService.encodePassword(password);
 
-    const user = await this.userModel.create(createUserDto);
+    const user = await this.usersRepository.create(createUserDto);
 
     return user;
   }
@@ -95,16 +90,17 @@ export class UsersService implements OnModuleInit {
     id: UserDocument['id'],
     updateUserDto: UpdateUserDto,
   ): Promise<UserDocument | null> {
-    let user = await this.findById(id);
+    await this.findById(id);
     const { password } = updateUserDto;
 
     if (password) {
       updateUserDto.password = await EncoderService.encodePassword(password);
     }
 
-    user = await this.userModel.findByIdAndUpdate(id, updateUserDto, {
-      new: true,
-    });
+    const user = await this.usersRepository.findByIdAndUpdate(
+      id,
+      updateUserDto,
+    );
 
     return user;
   }
@@ -112,7 +108,7 @@ export class UsersService implements OnModuleInit {
   async removeUser(id: UserDocument['id']): Promise<UserDocument | null> {
     await this.findOne(id);
 
-    const userDelete = await this.userModel.findByIdAndDelete(id);
+    const userDelete = await this.usersRepository.findByIdAndDelete(id);
 
     return userDelete;
   }
@@ -120,7 +116,7 @@ export class UsersService implements OnModuleInit {
   // *Public methods
 
   async findOne(id: UserDocument['id']): Promise<UserDocument> {
-    const user = await this.userModel.findById(id, { password: 0 });
+    const user = await this.usersRepository.findOneById(id, { password: 0 });
 
     if (!user) throw new NotFoundException(NOT_EXIST_USER);
 
@@ -128,6 +124,6 @@ export class UsersService implements OnModuleInit {
   }
 
   async findById(id: UserDocument['id']): Promise<UserDocument | null> {
-    return await this.userModel.findById(id, { password: 0 });
+    return await this.usersRepository.findOneById(id, { password: 0 });
   }
 }

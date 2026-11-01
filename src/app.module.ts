@@ -9,6 +9,7 @@ import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ScheduleModule } from '@nestjs/schedule';
+import { seconds, ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 import { CommonModule } from '@common/common.module';
 import { HttpExceptionFilter } from '@common/filters/http-exception.filter';
@@ -49,6 +50,15 @@ import { UsersModule } from '@modules/users/users.module';
       useClass: MongooseConfigService,
     }),
     ScheduleModule.forRoot(),
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          limit: 50,
+          ttl: seconds(60),
+        },
+      ],
+      errorMessage: 'Too many requests, please try again later.',
+    }),
     EventEmitterModule.forRoot(),
     CommonModule,
 
@@ -74,6 +84,7 @@ import { UsersModule } from '@modules/users/users.module';
   ],
   providers: [
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },

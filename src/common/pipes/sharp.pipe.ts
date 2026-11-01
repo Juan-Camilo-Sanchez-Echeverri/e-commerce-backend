@@ -5,9 +5,10 @@ import * as sharp from 'sharp';
 import { v4 as uuid } from 'uuid';
 
 @Injectable()
-export class SharpPipe
-  implements PipeTransform<Express.Multer.File[], Promise<string[]>>
-{
+export class SharpPipe implements PipeTransform<
+  Express.Multer.File[],
+  Promise<string[]>
+> {
   async transform(files: Express.Multer.File[]): Promise<string[]> {
     const outputDir = path.join('uploads/products');
     mkdirSync(outputDir, { recursive: true });

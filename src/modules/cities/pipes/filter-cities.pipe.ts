@@ -1,6 +1,7 @@
 import { Inject, Injectable, PipeTransform } from '@nestjs/common';
 import { REQUEST } from '@nestjs/core';
 import { Request } from 'express';
+import { Types } from 'mongoose';
 
 import { FilterCitiesDto } from '../dto';
 import { StatesService } from '../../states/states.service';
@@ -17,7 +18,7 @@ export class FilterCitiesPipe implements PipeTransform {
 
     await this.statesService.findOneById(stateId);
 
-    value.data = { state: stateId };
+    value.data = { state: new Types.ObjectId(stateId) };
 
     return value;
   }

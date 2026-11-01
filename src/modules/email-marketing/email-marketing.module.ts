@@ -3,6 +3,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 
 import { EmailMarketingService } from './email-marketing.service';
 import { EmailMarketingController } from './email-marketing.controller';
+import { EmailMarketingRepository } from './repositories/email-marketing.repository';
 
 import {
   EmailMarketing,
@@ -22,6 +23,10 @@ import { NotificationsModule } from '../notifications/notifications.module';
     StoreCustomerModule,
   ],
   controllers: [EmailMarketingController],
-  providers: [EmailMarketingService, EmailSenderService],
+  providers: [
+    EmailMarketingService,
+    EmailMarketingRepository,
+    EmailSenderService,
+  ],
 })
 export class EmailMarketingModule {}

@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
+import { JwtModule, JwtSignOptions } from '@nestjs/jwt';
 
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
@@ -17,7 +17,7 @@ import { EmailRequestModule } from '../email-request/email-request.module';
     JwtModule.register({
       global: true,
       secret: envs.jwtSecret,
-      signOptions: { expiresIn: envs.expiresIn },
+      signOptions: { expiresIn: envs.expiresIn as JwtSignOptions['expiresIn'] },
     }),
   ],
   providers: [AuthService],

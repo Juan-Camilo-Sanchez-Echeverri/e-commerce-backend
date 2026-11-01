@@ -1,12 +1,12 @@
 import { Schema, Prop, SchemaFactory } from '@nestjs/mongoose';
-import mongoose, { HydratedDocument } from 'mongoose';
-import { validateMongo } from '@common/helpers/validate-mongo.helper';
-import { StateDocument } from '../../states/schemas/state.schema';
+import mongoose, { HydratedDocument, Types } from 'mongoose';
+import { validateMongo } from '@common/helpers/mongo.helpers';
+import { BaseSchema } from '@common/database';
 
 @Schema({ timestamps: true })
-export class City {
+export class City extends BaseSchema {
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'State', index: true })
-  state: StateDocument;
+  state: Types.ObjectId;
 
   @Prop({ required: true, index: true })
   code: string;

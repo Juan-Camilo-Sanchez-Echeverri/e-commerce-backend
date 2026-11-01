@@ -6,6 +6,7 @@ import {
   StoreCustomerSchema,
 } from './schemas/store-customer.schema';
 import { StoreCustomerController } from './store-customer.controller';
+import { StoreCustomerRepository } from './repositories/store-customer.repository';
 import { StoreCustomerService } from './store-customer.service';
 
 @Module({
@@ -15,7 +16,7 @@ import { StoreCustomerService } from './store-customer.service';
     ]),
   ],
   controllers: [StoreCustomerController],
-  providers: [StoreCustomerService],
+  providers: [StoreCustomerService, StoreCustomerRepository],
   exports: [StoreCustomerService],
 })
 export class StoreCustomerModule {}

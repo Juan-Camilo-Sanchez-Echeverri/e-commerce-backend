@@ -1,8 +1,9 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import mongoose, { HydratedDocument } from 'mongoose';
+import { BaseSchema } from '@common/database';
 
 @Schema({ timestamps: true })
-export class EmailMarketing {
+export class EmailMarketing extends BaseSchema {
   @Prop()
   subject: string;
 

@@ -11,7 +11,7 @@ export function IsPassword(validationOptions?: ValidationOptions) {
       constraints: [],
       options: validationOptions,
       validator: {
-        validate(value: any) {
+        validate(value: unknown) {
           if (typeof value !== 'string') return false;
 
           // Requerimientos para una contraseña segura

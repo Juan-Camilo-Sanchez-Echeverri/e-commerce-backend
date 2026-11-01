@@ -1,3 +1,5 @@
+import { PaginateResult, toEntity } from '@common/database';
+
 import {
   Injectable,
   NotFoundException,
@@ -5,8 +7,7 @@ import {
 } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
-import { InjectModel } from '@nestjs/mongoose';
-import { FilterQuery, PaginateModel, PaginateResult } from 'mongoose';
+import { QueryFilter } from 'mongoose';
 
 import { FilterDto } from '@common/dto';
 import { Status } from '@common/enums';
@@ -17,6 +18,7 @@ import {
 } from '@common/constants';
 
 import { CreateCouponDto, UpdateCouponDto } from './dto';
+import { CouponsRepository } from './repositories/coupons.repository';
 
 import {
   COUPON_CHARACTERS_INVALID,
@@ -34,37 +36,32 @@ import { Coupon, CouponDocument } from './schemas/coupon.schema';
 
 @Injectable()
 export class CouponsService {
-  constructor(
-    @InjectModel(Coupon.name)
-    private readonly couponModel: PaginateModel<Coupon>,
-  ) {}
+  constructor(private readonly couponsRepository: CouponsRepository) {}
 
   async findOneById(couponId: string): Promise<CouponDocument> {
-    const coupon = await this.couponModel.findById(couponId);
+    const coupon = await this.couponsRepository.findOneById(couponId);
     if (!coupon) throw new NotFoundException(COUPON_NOT_FOUND);
     return coupon;
   }
 
   async findOneByQuery(
-    query: FilterQuery<Coupon>,
+    query: QueryFilter<Coupon>,
   ): Promise<CouponDocument | null> {
-    return await this.couponModel.findOne(query);
+    return await this.couponsRepository.findOne(query);
   }
 
-  async findByQuery(query: FilterQuery<Coupon>): Promise<CouponDocument[]> {
-    return await this.couponModel.find(query);
+  async findByQuery(query: QueryFilter<Coupon>): Promise<CouponDocument[]> {
+    return await this.couponsRepository.find(query);
   }
 
   async findPaginate(
     filterDto: FilterDto<Coupon>,
   ): Promise<PaginateResult<CouponDocument>> {
-    const { limit, page, data } = filterDto;
-
-    return await this.couponModel.paginate(data, { limit, page });
+    return await this.couponsRepository.findPaginate(filterDto);
   }
 
   async findAll() {
-    return await this.couponModel.find();
+    return await this.couponsRepository.find({});
   }
 
   async create(createCouponDto: CreateCouponDto): Promise<CouponDocument> {
@@ -76,7 +73,9 @@ export class CouponsService {
 
     await this.validateCouponCreation(createCouponDto);
 
-    return await this.couponModel.create(createCouponDto);
+    return await this.couponsRepository.create(
+      toEntity<Coupon>(createCouponDto),
+    );
   }
 
   async update(
@@ -88,30 +87,34 @@ export class CouponsService {
 
     updateCouponDto = this.updateDates(existingCoupon, updateCouponDto);
 
-    const updateCoupon = await this.couponModel.findByIdAndUpdate(
+    const updateCoupon = await this.couponsRepository.findByIdAndUpdate(
       couponId,
       { $set: updateCouponDto },
-      { new: true },
     );
 
-    return updateCoupon!;
+    if (!updateCoupon) throw new NotFoundException(COUPON_NOT_FOUND);
+
+    return updateCoupon;
   }
 
   async remove(couponId: string): Promise<CouponDocument> {
     await this.findOneById(couponId);
-    const couponDelete = await this.couponModel.findByIdAndDelete(couponId);
+    const couponDelete =
+      await this.couponsRepository.findByIdAndDelete(couponId);
 
-    return couponDelete!;
+    if (!couponDelete) throw new NotFoundException(COUPON_NOT_FOUND);
+
+    return couponDelete;
   }
 
   async removeCouponUsage(couponId: string, email: string): Promise<void> {
-    await this.couponModel.findByIdAndUpdate(couponId, {
+    await this.couponsRepository.findByIdAndUpdate(couponId, {
       $pull: { usedBy: email },
     });
   }
 
   async updateCouponUsage(couponId: string, email: string): Promise<void> {
-    await this.couponModel.findByIdAndUpdate(couponId, {
+    await this.couponsRepository.findByIdAndUpdate(couponId, {
       $addToSet: { usedBy: email },
     });
   }
@@ -144,7 +147,7 @@ export class CouponsService {
     label: string,
     couponId: string | null,
   ): Promise<void> {
-    const offer = await this.couponModel.findOne({
+    const offer = await this.couponsRepository.findOne({
       label,
       _id: { $ne: couponId },
       status: Status.ACTIVE,
@@ -286,7 +289,7 @@ export class CouponsService {
   }
 
   private async validCodeCoupon(code: string): Promise<void> {
-    const codeExist = await this.couponModel.findOne({
+    const codeExist = await this.couponsRepository.findOne({
       code: code.toUpperCase(),
       status: Status.ACTIVE,
     });
@@ -308,27 +311,27 @@ export class CouponsService {
 
     await Promise.all(
       activeCoupons.map(async (coupon) => {
-        await this.couponModel.findByIdAndUpdate(coupon._id, {
+        await this.couponsRepository.findByIdAndUpdate(coupon._id, {
           status: Status.ACTIVE,
         });
       }),
     );
 
-    await this.couponModel.updateMany(query, { status: Status.ACTIVE });
+    await this.couponsRepository.updateMany(query, { status: Status.ACTIVE });
   }
 
   @Cron(CronExpression.EVERY_MINUTE)
   async deactivateCoupons(): Promise<void> {
     const dateCurrent = new Date();
 
-    const coupons = await this.couponModel.find({
+    const coupons = await this.couponsRepository.find({
       expirationDate: { $lt: dateCurrent },
       status: Status.ACTIVE,
     });
 
     await Promise.all(
       coupons.map(async (coupon) => {
-        await this.couponModel.findByIdAndUpdate(coupon._id, {
+        await this.couponsRepository.findByIdAndUpdate(coupon._id, {
           status: Status.INACTIVE,
         });
       }),

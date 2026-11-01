@@ -1,9 +1,11 @@
+import { toEntity } from '@common/database';
+
 import { Injectable, NotFoundException } from '@nestjs/common';
 
-import { InjectModel } from '@nestjs/mongoose';
-import { FilterQuery, PaginateModel, PopulateOptions } from 'mongoose';
+import { PopulateOptions, QueryFilter, UpdateQuery } from 'mongoose';
 
 import { CreateProductDto, ParamsVariantDto, UpdateProductDto } from './dto';
+import { ProductsRepository } from './repositories/products.repository';
 import { Product, ProductDocument } from './schemas/product.schema';
 
 import { FilterDto } from '@common/dto';
@@ -18,32 +20,23 @@ import { PRODUCT_NOT_FOUND } from './constants/products.constants';
 @Injectable()
 export class ProductsService {
   private readonly pathsPopulate: PopulateOptions[] = [
-    { path: 'categories', select: 'name', match: { status: 'active' } },
-    { path: 'subcategories', select: 'name', match: { status: 'active' } },
+    { path: 'categories', select: 'name', match: { status: Status.ACTIVE } },
+    { path: 'subcategories', select: 'name', match: { status: Status.ACTIVE } },
   ];
 
   constructor(
-    @InjectModel(Product.name)
-    private readonly productModel: PaginateModel<ProductDocument>,
+    private readonly productsRepository: ProductsRepository,
     private readonly offersService: OffersService,
   ) {}
 
-  async findPaginate(query: FilterDto<ProductDocument>) {
-    const { data, limit, page } = query;
-
-    return await this.productModel.paginate(data, {
-      limit,
-      page,
+  async findPaginate(query: FilterDto<Product>) {
+    return await this.productsRepository.findPaginate(query, {
       populate: this.pathsPopulate,
     });
   }
 
-  async findPublic(query: FilterDto<ProductDocument>) {
-    const { data, limit, page } = query;
-
-    const products = await this.productModel.paginate(data, {
-      limit,
-      page,
+  async findPublic(query: FilterDto<Product>) {
+    const products = await this.productsRepository.findPaginate(query, {
       populate: this.pathsPopulate,
     });
 
@@ -59,8 +52,8 @@ export class ProductsService {
     };
   }
 
-  async findOneByQuery(query: FilterQuery<ProductDocument> = {}) {
-    const product = await this.productModel.findOne(query);
+  async findOneByQuery(query: QueryFilter<Product> = {}) {
+    const product = await this.productsRepository.findOne(query);
 
     if (product) await this.populateDoc(product);
 
@@ -68,7 +61,7 @@ export class ProductsService {
   }
 
   async findById(id: string) {
-    const product = await this.productModel.findById(id);
+    const product = await this.productsRepository.findOneById(id);
 
     if (!product) throw new NotFoundException(PRODUCT_NOT_FOUND);
 
@@ -78,31 +71,30 @@ export class ProductsService {
   }
 
   async create(createProductDto: CreateProductDto): Promise<ProductDocument> {
-    const product = await this.productModel.create(createProductDto);
+    const product = await this.productsRepository.create(
+      toEntity<Product>(createProductDto),
+    );
 
     return await this.populateDoc(product);
   }
 
   async update(id: string, updateProductDto: UpdateProductDto) {
-    let updateQuery = {};
-
     const { categories, subcategories } = updateProductDto;
 
-    if (categories !== undefined && categories.length === 0) {
-      updateQuery = { $unset: { categories: 1 }, ...updateProductDto };
-    } else {
-      updateQuery = updateProductDto;
-    }
+    const categoriesUpdate: UpdateQuery<Product> =
+      categories !== undefined && categories.length === 0
+        ? { $unset: { categories: 1 }, ...updateProductDto }
+        : { ...updateProductDto };
 
-    if (subcategories !== undefined && subcategories.length === 0) {
-      updateQuery = { $unset: { subcategories: 1 }, ...updateProductDto };
-    } else {
-      updateQuery = updateProductDto;
-    }
+    const updateQuery: UpdateQuery<Product> =
+      subcategories !== undefined && subcategories.length === 0
+        ? { $unset: { subcategories: 1 }, ...updateProductDto }
+        : categoriesUpdate;
 
-    const result = await this.productModel.findByIdAndUpdate(id, updateQuery, {
-      new: true,
-    });
+    const result = await this.productsRepository.findByIdAndUpdate(
+      id,
+      updateQuery,
+    );
 
     await this.populateDoc(result!);
 
@@ -110,7 +102,7 @@ export class ProductsService {
   }
 
   async remove(id: string) {
-    return await this.productModel.findByIdAndDelete(id);
+    return await this.productsRepository.findByIdAndDelete(id);
   }
 
   // Métodos para variantes
@@ -123,11 +115,12 @@ export class ProductsService {
   }
 
   async addVariant(productId: string, createVariantDto: CreateVariantDto) {
-    const product = await this.productModel.findByIdAndUpdate(
-      productId,
-      { $push: { variants: createVariantDto }, status: Status.ACTIVE },
-      { new: true },
-    );
+    const product = await this.productsRepository.findByIdAndUpdate(productId, {
+      $push: {
+        variants: toEntity<Product['variants'][number]>(createVariantDto),
+      },
+      status: Status.ACTIVE,
+    });
 
     if (!product) throw new NotFoundException(PRODUCT_NOT_FOUND);
 
@@ -156,10 +149,9 @@ export class ProductsService {
     const product = await this.findById(productId);
     const variant = this.getVariant(product, variantId);
 
-    await this.productModel.findOneAndUpdate(
+    await this.productsRepository.findOneAndUpdate(
       { _id: productId },
       { $pull: { variants: { _id: variantId } } },
-      { new: true },
     );
 
     return variant;
@@ -167,10 +159,9 @@ export class ProductsService {
 
   async addVariantImages(params: ParamsVariantDto, imagePaths: string[]) {
     const { productId, variantId } = params;
-    const product = await this.productModel.findOneAndUpdate(
+    const product = await this.productsRepository.findOneAndUpdate(
       { _id: productId, 'variants._id': variantId },
       { $push: { 'variants.$.images': { $each: imagePaths } } },
-      { new: true },
     );
 
     if (!product) throw new NotFoundException(PRODUCT_NOT_FOUND);
@@ -184,7 +175,7 @@ export class ProductsService {
     size: string,
     qty: number,
   ): Promise<void> {
-    const res = await this.productModel.updateOne(
+    const res = await this.productsRepository.updateOne(
       { _id: productId, 'variants._id': variantId },
       {
         $inc: {
@@ -201,8 +192,8 @@ export class ProductsService {
 
   async getPrice(product: ProductDocument): Promise<number | null> {
     const offer = await this.offersService.findOneByQuery({
-      status: 'active',
-      byProduct: product,
+      status: Status.ACTIVE,
+      byProduct: product.id,
     });
 
     let price = product.price;

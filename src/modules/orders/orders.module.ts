@@ -7,6 +7,7 @@ import { CouponsModule } from '../coupons/coupons.module';
 import { StoreCustomerModule } from '../store-customers/store-customer.module';
 
 import { OrdersController } from './orders.controller';
+import { OrdersRepository } from './repositories/orders.repository';
 import { OrdersService } from './orders.service';
 
 import { Order, OrderSchema } from './schemas/order.schema';
@@ -21,7 +22,7 @@ import { OrdersEvents } from './events/orders.events';
     StoreCustomerModule,
   ],
   controllers: [OrdersController],
-  providers: [OrdersService, OrdersEvents],
+  providers: [OrdersService, OrdersRepository, OrdersEvents],
   exports: [OrdersService],
 })
 export class OrdersModule {}
