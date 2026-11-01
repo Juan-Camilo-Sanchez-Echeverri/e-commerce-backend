@@ -6,6 +6,7 @@ import {
   EmailRequestSchema,
 } from './schemas/email-request.schema';
 import { EmailRequestService } from './email-request.service';
+import { EmailRequestRepository } from './repositories/email-request.repository';
 import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
@@ -15,7 +16,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
       { name: EmailRequest.name, schema: EmailRequestSchema },
     ]),
   ],
-  providers: [EmailRequestService],
+  providers: [EmailRequestService, EmailRequestRepository],
   exports: [EmailRequestService],
 })
 export class EmailRequestModule {}

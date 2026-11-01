@@ -96,7 +96,10 @@ export class AuthGuard implements CanActivate {
     return user!;
   }
 
-  private checkUserLastLogin(user: { lastLogin: Date }, payload: PayloadLogin) {
+  private checkUserLastLogin(
+    user: { lastLogin: Date | null },
+    payload: PayloadLogin,
+  ) {
     if (!user.lastLogin) throw new UnauthorizedException();
 
     const userLastLogin = user.lastLogin.toISOString();

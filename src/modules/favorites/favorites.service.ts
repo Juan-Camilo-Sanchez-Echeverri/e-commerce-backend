@@ -1,55 +1,54 @@
+import { toEntity } from '@common/database';
+
 import {
   Injectable,
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
 
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-
 import { CreateFavoriteDto, UpdateFavoriteDto } from './dto';
+import { FavoritesRepository } from './repositories/favorites.repository';
 import { Favorite, FavoriteDocument } from './schemas/favorite.schema';
 
 @Injectable()
 export class FavoritesService {
-  constructor(
-    @InjectModel(Favorite.name) private readonly favoriteModel: Model<Favorite>,
-  ) {}
+  constructor(private readonly favoritesRepository: FavoritesRepository) {}
 
   async create(
     createFavoriteDto: CreateFavoriteDto,
   ): Promise<FavoriteDocument | null> {
     const { product } = createFavoriteDto;
-    const listFavorite = await this.favoriteModel.findOne({
+    const listFavorite = await this.favoritesRepository.findOne({
       user: createFavoriteDto.user,
     });
 
     if (listFavorite) {
       this.validateProductsExist(listFavorite, product);
-      return await this.favoriteModel.findByIdAndUpdate(
+      return await this.favoritesRepository.findByIdAndUpdate(
         listFavorite._id,
         {
           $push: { products: { $each: [product] } },
         },
-        { new: true },
       );
     }
 
-    return await this.favoriteModel.create({
-      ...createFavoriteDto,
-      products: [product],
-    });
+    return await this.favoritesRepository.create(
+      toEntity<Favorite>({
+        ...createFavoriteDto,
+        products: [product],
+      }),
+    );
   }
 
-  async findMe(user: any): Promise<FavoriteDocument> {
-    const listFavorites = await this.favoriteModel.findOne({ user }).populate({
-      path: 'products',
-      select: 'name description price images',
-    });
+  async findMe(user: string): Promise<FavoriteDocument> {
+    const listFavorites = await this.favoritesRepository.findOne({ user });
 
     if (!listFavorites) throw new NotFoundException('No hay productos');
 
-    return listFavorites;
+    return await listFavorites.populate({
+      path: 'products',
+      select: 'name description price images',
+    });
   }
 
   async removeProduct(
@@ -60,11 +59,9 @@ export class FavoritesService {
 
     this.validateProductDelete(favorite, product);
 
-    return await this.favoriteModel.findByIdAndUpdate(
-      favorite._id,
-      { $pull: { products: product } },
-      { new: true },
-    );
+    return await this.favoritesRepository.findByIdAndUpdate(favorite._id, {
+      $pull: { products: product },
+    });
   }
 
   /**

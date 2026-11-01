@@ -1,14 +1,14 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import mongoose, { Document } from 'mongoose';
+import mongoose, { HydratedDocument, Types } from 'mongoose';
 
 import { Status } from '@common/enums';
 
-import { Subcategory } from '../../subcategories/schemas/subcategory.schema';
+import { BaseSchema } from '@common/database';
 
-export type CategoryDocument = Category & Document;
+export type CategoryDocument = HydratedDocument<Category>;
 
 @Schema({ timestamps: true, versionKey: false })
-export class Category extends Document {
+export class Category extends BaseSchema {
   @Prop({ required: true })
   name: string;
 
@@ -24,7 +24,7 @@ export class Category extends Document {
   @Prop({
     type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Subcategory' }],
   })
-  subcategories?: Subcategory[];
+  subcategories?: Types.ObjectId[];
 }
 
 export const CategorySchema = SchemaFactory.createForClass(Category);

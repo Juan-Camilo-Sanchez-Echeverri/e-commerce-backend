@@ -2,11 +2,12 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 
 import { HydratedDocument } from 'mongoose';
 
-import { validateMongo } from '@common/helpers/validate-mongo.helper';
+import { validateMongo } from '@common/helpers/mongo.helpers';
 import { Role, Status } from '@common/enums';
+import { BaseSchema } from '@common/database';
 
 @Schema({ timestamps: true, versionKey: false })
-export class User {
+export class User extends BaseSchema {
   @Prop({ required: true })
   name: string;
 
@@ -28,8 +29,8 @@ export class User {
   @Prop()
   roles: Role[];
 
-  @Prop({ type: Date })
-  lastLogin: Date;
+  @Prop({ type: Date, default: null })
+  lastLogin: Date | null;
 }
 
 export type UserDocument = HydratedDocument<User>;

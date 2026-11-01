@@ -7,6 +7,7 @@ import { MulterModule } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 
 import { OffersController } from './offers.controller';
+import { OffersRepository } from './repositories/offers.repository';
 import { OffersService } from './offers.service';
 import { Offer, OfferSchema } from './schemas/offer.schema';
 import { fileNamer } from '../../common/helpers';
@@ -28,7 +29,7 @@ import { fileNamer } from '../../common/helpers';
     MongooseModule.forFeature([{ name: Offer.name, schema: OfferSchema }]),
   ],
   controllers: [OffersController],
-  providers: [OffersService],
+  providers: [OffersService, OffersRepository],
   exports: [OffersService],
 })
 export class OffersModule {}

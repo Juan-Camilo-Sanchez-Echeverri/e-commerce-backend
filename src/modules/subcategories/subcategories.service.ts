@@ -1,46 +1,43 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 
-import { InjectModel } from '@nestjs/mongoose';
-import { FilterQuery, PaginateModel, PaginateResult } from 'mongoose';
+import { QueryFilter } from 'mongoose';
 
+import { PaginateResult } from '@common/database';
 import { FilterDto } from '@common/dto';
 
 import { CreateSubcategoryDto, UpdateSubcategoryDto } from './dto';
 
+import { SubcategoriesRepository } from './repositories/subcategories.repository';
 import { Subcategory } from './schemas/subcategory.schema';
 
 @Injectable()
 export class SubcategoriesService {
   constructor(
-    @InjectModel(Subcategory.name)
-    private subCategoryModel: PaginateModel<Subcategory>,
+    private readonly subcategoriesRepository: SubcategoriesRepository,
   ) {}
 
   async create(
     createSubcategoryDto: CreateSubcategoryDto,
   ): Promise<Subcategory> {
-    const createdSubCategory = new this.subCategoryModel(createSubcategoryDto);
-    return createdSubCategory.save();
+    return await this.subcategoriesRepository.create(createSubcategoryDto);
   }
 
   async findAll(): Promise<Subcategory[]> {
-    return this.subCategoryModel.find();
+    return await this.subcategoriesRepository.find({});
   }
 
   async findPaginate(
     filterDto: FilterDto<Subcategory>,
   ): Promise<PaginateResult<Subcategory>> {
-    const { page, limit, data } = filterDto;
-
-    return this.subCategoryModel.paginate(data, { page, limit });
+    return await this.subcategoriesRepository.findPaginate(filterDto);
   }
 
-  async findOne(query: FilterQuery<Subcategory>): Promise<Subcategory | null> {
-    return await this.subCategoryModel.findOne(query);
+  async findOne(query: QueryFilter<Subcategory>): Promise<Subcategory | null> {
+    return await this.subcategoriesRepository.findOne(query);
   }
 
   async findById(id: string): Promise<Subcategory> {
-    const subcategory = await this.subCategoryModel.findById(id);
+    const subcategory = await this.subcategoriesRepository.findOneById(id);
 
     if (!subcategory) throw new NotFoundException('Subcategory not found');
 
@@ -53,20 +50,27 @@ export class SubcategoriesService {
   ): Promise<Subcategory> {
     await this.findById(id);
 
-    const updatedSubcategory = await this.subCategoryModel.findByIdAndUpdate(
-      id,
-      updateSubcategoryDto,
-      { new: true },
-    );
+    const updatedSubcategory =
+      await this.subcategoriesRepository.findByIdAndUpdate(
+        id,
+        updateSubcategoryDto,
+      );
 
-    return updatedSubcategory!;
+    if (!updatedSubcategory) {
+      throw new NotFoundException('Subcategory not found');
+    }
+
+    return updatedSubcategory;
   }
 
   async remove(id: string): Promise<Subcategory> {
     await this.findById(id);
 
-    const category = await this.subCategoryModel.findByIdAndDelete(id);
+    const subcategory =
+      await this.subcategoriesRepository.findByIdAndDelete(id);
 
-    return category!;
+    if (!subcategory) throw new NotFoundException('Subcategory not found');
+
+    return subcategory;
   }
 }
